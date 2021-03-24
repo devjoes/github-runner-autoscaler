@@ -1,0 +1,24 @@
+# permissions for end users to edit scaledactionrunners.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scaledactionrunner-editor-role
+rules:
+- apiGroups:
+  - runner.devjoes.com
+  resources:
+  - scaledactionrunners
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - runner.devjoes.com
+  resources:
+  - scaledactionrunners/status
+  verbs:
+  - get

@@ -1,0 +1,20 @@
+# permissions for end users to view scaledobjects.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scaledobject-viewer-role
+rules:
+- apiGroups:
+  - runner.devjoes.com
+  resources:
+  - scaledobjects
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - runner.devjoes.com
+  resources:
+  - scaledobjects/status
+  verbs:
+  - get

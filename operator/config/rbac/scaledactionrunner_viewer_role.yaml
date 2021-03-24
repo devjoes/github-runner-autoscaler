@@ -1,0 +1,20 @@
+# permissions for end users to view scaledactionrunners.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scaledactionrunner-viewer-role
+rules:
+- apiGroups:
+  - runner.devjoes.com
+  resources:
+  - scaledactionrunners
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - runner.devjoes.com
+  resources:
+  - scaledactionrunners/status
+  verbs:
+  - get

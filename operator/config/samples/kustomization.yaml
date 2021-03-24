@@ -1,0 +1,4 @@
+## Append samples you want in your CSV to this file as resources ##
+resources:
+- runner_v1alpha1_scaledactionrunner.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

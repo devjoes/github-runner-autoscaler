@@ -1,9 +1,12 @@
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+bin
+testbin/*
 
 # Test binary, build with `go test -c`
 *.test
@@ -20,7 +23,3 @@
 *.swp
 *.swo
 *~
-
-
-**/apiserver.local.config
-**/__debug_bin

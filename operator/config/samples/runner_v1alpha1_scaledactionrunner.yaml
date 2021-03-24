@@ -1,0 +1,7 @@
+apiVersion: runner.devjoes.com/v1alpha1
+kind: ScaledActionRunner
+metadata:
+  name: scaledactionrunner-sample
+spec:
+  # Add fields here
+  foo: bar
