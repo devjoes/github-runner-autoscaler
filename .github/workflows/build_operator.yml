@@ -23,7 +23,7 @@ jobs:
           set -x
           echo "$IMAGENAME"
           TAGS="$IMAGENAME:$(printf %06d $GITHUB_RUN_NUMBER)"
-          REF=$(echo "${GITHUB_REF}" | sed 's/\/?refs\/(tags|heads))\///g' -E)
+          REF=$(echo "$GITHUB_REF" | sed 's/\/?refs\/(tags|heads)\///g' -E)
           TAGS="$TAGS,$IMAGENAME:$REF"
           if [[ $GITHUB_REF == *"/tags/"* ]]; then
             TAGS="$TAGS,$IMAGENAME:latest"
