@@ -1,9 +1,11 @@
 name: Build operator and push image
 
 on:
+  pull_request:
   push:
- #  paths:
- #     - /operator
+    tags: '*'
+    paths:
+    - /operator
 defaults:
   run:
     working-directory: ./operator
@@ -44,4 +46,4 @@ jobs:
         with:
           context: ./operator
           tags: ${{ env.TAGS }}
-          push: "false"
+          push: "true"
