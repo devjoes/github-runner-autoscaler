@@ -21,11 +21,14 @@ jobs:
         with:
           username: joeshearn
           password: ${{ secrets.dockerhub_pass }}
-
+      - name: Create tag
+        run: |
+          TAG=$(printf %06d $GITHUB_RUN_NUMBER) | sed 's/\/?refs\/(tags|heads)\///g' -E)
+          echo "TAG=$TAG" | tee -a $GITHUB_ENV
       - name: Build and push Docker image
         if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         uses: docker/build-push-action@v2.3.0
         with:
           context: ./operator
-          tags: joeshearn/github-runner-autoscaler-operator:${{ github.run_id }},joeshearn/github-runner-autoscaler-operator:latest
-          push: "true"
+          tags: joeshearn/github-runner-autoscaler-operator:${{ env.TAG }},joeshearn/github-runner-autoscaler-operator:latest
+          push: "false"
