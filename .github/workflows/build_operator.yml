@@ -13,15 +13,12 @@ jobs:
 
     steps:
       - name: Generate docker tags
+        env:
+          IMAGENAME: joeshearn/github-runner-autoscaler-operator
         run: |
           set -x
-          TAGS="$IMAGENAME:$(printf %06d $GITHUB_RUN_NUMBER)"
-          REF=$(echo "${GITHUB_REF}" | sed 's/\/?refs\/(tags|heads))\///g' -E)
-          TAGS="$TAGS,$IMAGENAME:$REF"
-          if [[ $GITHUB_REF == *"/tags/"* ]]; then
-            TAGS="$TAGS,$IMAGENAME:latest"
-          fi
-          echo "TAGS=$TAGS" | tee -a $GITHUB_ENV
+          echo "$IMAGENAME"
+          
       - uses: actions/checkout@v2
       - uses: RyanSiu1995/kubebuilder-action@v1.1
       - run: make && make test
