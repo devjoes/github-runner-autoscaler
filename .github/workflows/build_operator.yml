@@ -1,16 +1,13 @@
-name: Build operator and push image
-
+name: Build operator and optionally push image
 on:
   pull_request:
     paths:
-    - operator/**
+      - operator/**
   push:
     branches:
       - "master"
     tags:
-      - "*operator*"
-    paths:
-    - operator/**
+      - "*"
 defaults:
   run:
     working-directory: ./operator
@@ -21,8 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: RyanSiu1995/kubebuilder-action@v1.1
-      - run: |
-          printenv
       - name: Generate docker tags
         env:
           IMAGENAME: joeshearn/github-runner-autoscaler-operator
@@ -36,11 +31,10 @@ jobs:
             TAGS="$TAGS,$IMAGENAME:latest"
           fi
           echo "TAGS=$TAGS" | tee -a $GITHUB_ENV
-          
-      
+
       - run: make && make test
       - name: Login
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        if: github.event_name == 'push'
         uses: docker/login-action@v1.8.0
         with:
           username: joeshearn
