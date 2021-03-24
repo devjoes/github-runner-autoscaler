@@ -2,8 +2,13 @@ name: Build operator and push image
 
 on:
   pull_request:
+    paths:
+    - /operator
   push:
-    tags: '*'
+    branches:
+      - "master"
+    tags:
+      - "v*"
     paths:
     - /operator
 defaults:
