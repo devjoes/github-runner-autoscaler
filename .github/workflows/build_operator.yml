@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v2
+      - uses: RyanSiu1995/kubebuilder-action@v1.1
       - run: |
           printenv
       - name: Generate docker tags
@@ -28,8 +30,7 @@ jobs:
           fi
           echo "TAGS=$TAGS" | tee -a $GITHUB_ENV
           
-      - uses: actions/checkout@v2
-      - uses: RyanSiu1995/kubebuilder-action@v1.1
+      
       - run: make && make test
       - name: Login
         if: github.ref == 'refs/heads/master' && github.event_name == 'push'
