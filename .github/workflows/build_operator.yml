@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: RyanSiu1995/kubebuilder-action@v1.1
-      - run: make test
+      - run: cd operator; make test
       - uses: docker/setup-buildx-action@v1
       - name: Extract tag name
         id: tag
