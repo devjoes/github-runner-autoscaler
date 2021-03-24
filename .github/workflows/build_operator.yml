@@ -12,12 +12,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - run: >
+      - run: |
           printenv
       - name: Generate docker tags
         env:
           IMAGENAME: joeshearn/github-runner-autoscaler-operator
-        run: >
+        run: |
           set -x
           echo "$IMAGENAME"
           TAGS="$IMAGENAME:$(printf %06d $GITHUB_RUN_NUMBER)"
