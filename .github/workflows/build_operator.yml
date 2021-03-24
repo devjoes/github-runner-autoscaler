@@ -14,7 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: RyanSiu1995/kubebuilder-action@v1.1
-      - uses: docker/setup-buildx-action@v1
       #- run: make && make test
       - name: Login
         if: github.ref == 'refs/heads/master' && github.event_name == 'push'
