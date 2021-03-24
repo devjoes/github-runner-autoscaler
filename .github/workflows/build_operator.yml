@@ -12,8 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Create variables
-        run: |
+      - run: |
           set -x
           echo "test"
           TAGS="$IMAGENAME:$(printf %06d $GITHUB_RUN_NUMBER)"
