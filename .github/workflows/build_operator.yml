@@ -1,0 +1,54 @@
+name: Build operator and push image
+
+on:
+  pull_request:
+    paths:
+    - operator/**
+  push:
+    branches:
+      - "master"
+    tags:
+      - "*"
+    paths:
+    - operator/**
+defaults:
+  run:
+    working-directory: ./operator
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: RyanSiu1995/kubebuilder-action@v1.1
+      - run: |
+          printenv
+      - name: Generate docker tags
+        env:
+          IMAGENAME: joeshearn/github-runner-autoscaler-operator
+        run: |
+          set -x
+          echo "$IMAGENAME"
+          TAGS="$IMAGENAME:$(printf %06d $GITHUB_RUN_NUMBER)"
+          REF=$(echo "$GITHUB_REF" | sed 's/\/?refs\/(tags|heads)\///g' -E)
+          TAGS="$TAGS,$IMAGENAME:$REF"
+          if [[ $GITHUB_REF == *"/tags/"* ]]; then
+            TAGS="$TAGS,$IMAGENAME:latest"
+          fi
+          echo "TAGS=$TAGS" | tee -a $GITHUB_ENV
+          
+      
+      - run: make && make test
+      - name: Login
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        uses: docker/login-action@v1.8.0
+        with:
+          username: joeshearn
+          password: ${{ secrets.dockerhub_pass }}
+      - name: Build and push Docker image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v2.3.0
+        with:
+          context: ./operator
+          tags: ${{ env.TAGS }}
+          push: "true"
