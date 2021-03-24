@@ -12,15 +12,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: RyanSiu1995/kubebuilder-action@v1.1
-      - run: make && make test
-      - name: Login
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-        uses: docker/login-action@v1.8.0
-        with:
-          username: joeshearn
-          password: ${{ secrets.dockerhub_pass }}
       - name: Create variables
         run: |
           TAGS="$IMAGENAME:$(printf %06d $GITHUB_RUN_NUMBER)"
@@ -32,6 +23,15 @@ jobs:
           echo "TAGS=$TAGS" | tee -a $GITHUB_ENV
         env:
           IMAGENAME: joeshearn/github-runner-autoscaler-operator
+      - uses: actions/checkout@v2
+      - uses: RyanSiu1995/kubebuilder-action@v1.1
+      - run: make && make test
+      - name: Login
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        uses: docker/login-action@v1.8.0
+        with:
+          username: joeshearn
+          password: ${{ secrets.dockerhub_pass }}
       - name: Build and push Docker image
         if: github.event_name == 'push'
         uses: docker/build-push-action@v2.3.0
