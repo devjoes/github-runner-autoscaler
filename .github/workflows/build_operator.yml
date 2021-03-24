@@ -3,12 +3,14 @@ name: Build operator and push image
 on:
   pull_request:
     paths:
-    - /operator
+    - /operator/**
   push:
     branches:
       - "master"
     tags:
       - "*"
+    paths:
+    - /operator/**
 defaults:
   run:
     working-directory: ./operator
