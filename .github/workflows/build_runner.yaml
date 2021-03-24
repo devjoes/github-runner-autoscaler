@@ -2,11 +2,11 @@ name: Build the runner on push or if the base image has changed (on a schedule)
 on:
   push:
     branches:
-      - "*"
+      - "master"
     paths:
       - "runner/**"
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 */1 * * *"
 jobs:
   build:
     runs-on: ubuntu-latest
