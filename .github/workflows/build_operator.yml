@@ -13,8 +13,6 @@ jobs:
 
     steps:
       - name: Generate docker tags
-        env:
-          IMAGENAME: joeshearn/github-runner-autoscaler-operator
         run: |
           set -x
           TAGS="$IMAGENAME:$(printf %06d $GITHUB_RUN_NUMBER)"
