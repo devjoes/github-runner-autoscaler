@@ -10,7 +10,7 @@ on:
     tags:
       - "*"
     paths:
-    - /operator/**
+    - operator/**
 defaults:
   run:
     working-directory: ./operator
