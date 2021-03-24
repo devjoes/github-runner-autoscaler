@@ -1,4 +1,5 @@
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
+
 RUN dotnet new console -n RsaParamsToPem
 COPY ./RsaParamsToPem.cs ./RsaParamsToPem/Program.cs
 RUN dotnet publish -c release --self-contained --runtime linux-x64 RsaParamsToPem
