@@ -2,8 +2,8 @@ name: Build operator and push image
 
 on:
   push:
-    paths:
-      - /operator
+ #  paths:
+ #     - /operator
 
 jobs:
   build:
