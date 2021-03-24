@@ -15,13 +15,6 @@ jobs:
       - run: |
           set -x
           echo "test"
-          TAGS="$IMAGENAME:$(printf %06d $GITHUB_RUN_NUMBER)"
-          REF=$(echo "${GITHUB_REF}" | sed 's/\/?refs\/(tags|heads))\///g' -E)
-          TAGS="$TAGS,$IMAGENAME:$REF"
-          if [[ $GITHUB_REF == *"/tags/"* ]]; then
-            TAGS="$TAGS,$IMAGENAME:latest"
-          fi
-          echo "TAGS=$TAGS" | tee -a $GITHUB_ENV
         env:
           IMAGENAME: joeshearn/github-runner-autoscaler-operator
       - uses: actions/checkout@v2
