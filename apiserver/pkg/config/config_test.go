@@ -14,27 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-// func getWorkflowConfig() (WorkflowConfig, []byte, map[string]interface{}, []byte, rsa.PrivateKey, []byte) {
-// 	wfc := WorkflowConfig{
-// 		AgentId:    json.Number("46"),
-// 		AgentName:  "test",
-// 		PoolId:     json.Number("1"),
-// 		PoolName:   "Default",
-// 		ServerUrl:  "https://pipelines.actions.githubusercontent.com/flkkjdlkjsdfkljsdfkl",
-// 		GitHubUrl:  "https://github.com/foo/bar",
-// 		WorkFolder: "/_work",
-// 	}
-// 	runner, _ := json.Marshal(wfc)
-
-// 	creds := map[string]interface{}{
-// 		"authorizationUrl": "https://vstoken.actions.githubusercontent.com/_apis/oauth2/token/e54afd9c-12b0-459d-9e6b-19ea67e10ad9",
-// 		"clientId":         "123afd9c-12b0-459d-9e6b-19ea67e10ad9",
-// 	}
-// 	credentials := []byte("{\"data\":{\"authorizationUrl\":\"https://vstoken.actions.githubusercontent.com/_apis/oauth2/token/e54afd9c-12b0-459d-9e6b-19ea67e10ad9\",\"clientId\":\"123afd9c-12b0-459d-9e6b-19ea67e10ad9\"}}")
-// 	keyBytes, key := getTestPrivateKey()
-// 	return wfc, runner, creds, credentials, key, keyBytes
-// }
-
 func createConfig(runnerNSsStr string, allNs bool, kubeconfig string, inCluster bool, resyncInterval time.Duration, params ...interface{}) (Config, error) {
 	flagRunnerNSs := &ArrayFlags{}
 	flagRunnerNSs.Set(runnerNSsStr)
@@ -171,56 +150,3 @@ func TestWatcherUpdatesWorkflowOnChange(t *testing.T) {
 	time.Sleep(time.Second)
 	assert.Equal(t, wfOwner, config.GetAllWorkflows()[0].Owner)
 }
-
-// func TestLoadsSecrets(t *testing.T) {
-// 	test := func(runnerNSs []string, allNs bool, labelSelector string) {
-// 		wfc, runner, creds, credentials, key, keyBytes := getWorkflowConfig()
-// 		fakeclient := fake.NewSimpleClientset(&corev1.Secret{
-// 			ObjectMeta: metav1.ObjectMeta{
-// 				Name:      "testsecret",
-// 				Namespace: "test",
-// 				Labels: map[string]string{
-// 					"action-secret-type": "autoscaler",
-// 				}},
-// 			Data: map[string][]byte{
-// 				".runner":      runner,
-// 				".credentials": credentials,
-// 				"private.pem":  keyBytes,
-// 			}},
-// 			&corev1.Secret{
-// 				ObjectMeta: metav1.ObjectMeta{
-// 					Name:      "runner-secret",
-// 					Namespace: "test",
-// 					Labels: map[string]string{
-// 						"action-secret-type": "runner",
-// 					}},
-// 				Data: map[string][]byte{
-// 					".runner":      runner,
-// 					".credentials": credentials,
-// 					"private.pem":  keyBytes,
-// 				}},
-// 			&corev1.Secret{
-// 				ObjectMeta: metav1.ObjectMeta{Name: "unrelated", Namespace: "test"},
-// 				Data: map[string][]byte{
-// 					foo: []byte("bar"),
-// 				}})
-
-// 		config, err := createConfig(runnerNSs, allNs, labelSelector, "", false, fakeclient)
-
-// 		assert.Nil(t, err)
-// 		assert.Equal(t, wfc.AgentId, config.Workflows[0].AgentId)
-// 		assert.Equal(t, wfc.AgentName, config.Workflows[0].AgentName)
-// 		assert.Equal(t, wfc.PoolId, config.Workflows[0].PoolId)
-// 		assert.Equal(t, wfc.PoolName, config.Workflows[0].PoolName)
-// 		assert.Equal(t, wfc.ServerUrl, config.Workflows[0].ServerUrl)
-// 		assert.Equal(t, wfc.GitHubUrl, config.Workflows[0].GitHubUrl)
-// 		assert.Equal(t, wfc.WorkFolder, config.Workflows[0].WorkFolder)
-// 		assert.Equal(t, creds["authorizationUrl"], config.Workflows[0].Auth.AuthorizationUrl)
-// 		assert.Equal(t, creds["clientId"], config.Workflows[0].Auth.ClientId)
-// 		assert.Equal(t, key, *config.Workflows[0].Auth.Token)
-// 	}
-// 	test([]string{"test"}, false, "action-secret-type=autoscaler")
-// 	test([]string{}, true, "action-secret-type=autoscaler")
-// 	test([]string{"test"}, false, "")
-// 	test([]string{}, true, "")
-// }
