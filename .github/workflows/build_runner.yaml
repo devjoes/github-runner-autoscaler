@@ -6,7 +6,7 @@ on:
     paths:
       - "runner/**"
   schedule:
-    - cron: "56 */1 * * *"
+    - cron: "59 * * * *"
 jobs:
   build:
     runs-on: ubuntu-latest
