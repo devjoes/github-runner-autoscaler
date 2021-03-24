@@ -16,7 +16,7 @@ jobs:
           password: ${{ secrets.dockerhub_pass }}
       - run: |
           docker pull myoung34/github-runner:latest
-          BASE_ID="$(docker image ls myoung34/github-runner:latest --format '{{.ID}}')
+          BASE_ID="$(docker image ls myoung34/github-runner:latest --format '{{.ID}}')"
           SHOULD_RELEASE=0
           if ! curl https://registry.hub.docker.com/v1/repositories/joeshearn/action-runner-sideloaded-config/tags  | jq '.[].name' | grep $BASE_ID; then
             SHOULD_RELEASE=1
