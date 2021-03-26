@@ -6,6 +6,7 @@ import (
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 
 	keda "github.com/kedacore/keda/v2/api/v1alpha1"
@@ -21,6 +22,11 @@ func getLabels(name string) map[string]string {
 
 func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *keda.ScaledObject {
 	ls := getLabels(c.Name)
+	var pollingInterval int32 = 30
+	var cooldownPeriod int32 = 120
+	var upStabilizationWindowSeconds int32 = 30
+	var upValue int32 = 100
+	var upPeriodSeconds int32 = 30
 	resource := keda.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{Name: c.Spec.Name, Namespace: c.Spec.Namespace, Labels: ls},
 		Spec: keda.ScaledObjectSpec{
@@ -45,6 +51,24 @@ func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *ked
 					},
 				},
 			},
+			PollingInterval: &pollingInterval,
+			CooldownPeriod:  &cooldownPeriod,
+			Advanced: &keda.AdvancedConfig{
+				HorizontalPodAutoscalerConfig: &keda.HorizontalPodAutoscalerConfig{
+					Behavior: &v2beta2.HorizontalPodAutoscalerBehavior{
+						ScaleUp: &v2beta2.HPAScalingRules{
+							StabilizationWindowSeconds: &upStabilizationWindowSeconds,
+							Policies: []v2beta2.HPAScalingPolicy{
+								v2beta2.HPAScalingPolicy{
+									Value:         upValue,
+									PeriodSeconds: upPeriodSeconds,
+									Type:          v2beta2.PercentScalingPolicy,
+								},
+							},
+						},
+					},
+				},
+			},
 			//TODO: add - or just merge from own config
 			// pollingInterval: 1
 			// cooldownPeriod: 1800 # Wait 30 mins before scaling to 0
@@ -64,6 +88,7 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 		AnnotationSecretsHash: secretsHash,
 	}
 
+	var manual string = "manual"
 	resource := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        c.Spec.Name,
@@ -95,7 +120,8 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 						Name: "workdir",
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						StorageClassName: &manual,
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceStorage: *c.Spec.WorkVolumeSize,
