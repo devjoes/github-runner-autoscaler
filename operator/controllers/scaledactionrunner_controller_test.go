@@ -21,12 +21,11 @@ import (
 //todo: poss get rid of spec.namespace since everything has to be in the same namespace.
 //TODO: poss just use meta.name. or splice spec.name up
 const (
-	testName            = "test-name"
-	testNamespace       = "test-namespace"
-	testRunnerName      = "test-runner-name"
-	testRunnerNamespace = "test-runner-namespace"
-	testMaxRunners      = 2
-	//TODO: make 1.
+	testName              = "test-name"
+	testNamespace         = "test-namespace"
+	testRunnerName        = "test-runner-name"
+	testRunnerNamespace   = "test-runner-namespace"
+	testMaxRunners        = 2
 	testMinRunners        = 0
 	testRunnerSecrets     = "foo,bar"
 	testGithubTokenSecret = "github"
@@ -34,18 +33,16 @@ const (
 	testRepo              = "test"
 	testImage             = "foo"
 	testRunnerLabels      = "foo,bar"
+	testPollingInterval   = int32(30)
 
-	testWorkVolumeSizeGigs = 123
+	testWorkVolumeSizeGigs = "123G"
 )
 
-var _ = Describe("CronJob controller", func() {
-
-	// Define utility constants for object names and testing timeouts/durations and intervals.
-
+var _ = Describe("ScaledActionRunner controller", func() {
 	Context("ScaledActionRunner CRD", func() {
 		ctx := context.Background()
 		var sar *runnerv1alpha1.ScaledActionRunner
-		It("Should set it up dependant StatefulSet and ScaledObject when created", func() {
+		It("Should set up dependant StatefulSet and ScaledObject when created", func() {
 			Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testNamespace}})).Should(Succeed())
 			Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testRunnerNamespace}})).Should(Succeed())
 			sar, _ = createTestScaledActionRunner(ctx, k8sClient)
@@ -69,6 +66,7 @@ var _ = Describe("CronJob controller", func() {
 				Expect(ss.Annotations[generators.AnnotationSecretsHash]).NotTo(BeNil())
 				Expect(*so.Spec.MaxReplicaCount).To(BeEquivalentTo(testMaxRunners))
 				Expect(*so.Spec.MinReplicaCount).To(BeEquivalentTo(testMinRunners))
+				Expect(*so.Spec.PollingInterval).To(BeEquivalentTo(30))
 				Expect(so.Spec.ScaleTargetRef.Name).To(Equal(ss.Name))
 				Expect(so.Spec.Triggers[0].Type).To(Equal("metrics-api"))
 				Expect(strings.HasSuffix(so.Spec.Triggers[0].Metadata["url"], testRunnerNamespace+"/"+testRunnerName)).To(BeTrue())
@@ -104,6 +102,7 @@ func testResults(ctx context.Context, test func(*appsv1.StatefulSet, *keda.Scale
 }
 
 func createTestScaledActionRunner(ctx context.Context, k8sClient client.Client) (*runnerv1alpha1.ScaledActionRunner, []corev1.Secret) {
+	var pollingInterval int32 = testPollingInterval
 	runner := runnerv1alpha1.ScaledActionRunner{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      testName,
@@ -118,11 +117,24 @@ func createTestScaledActionRunner(ctx context.Context, k8sClient client.Client) 
 			GithubTokenSecret: testGithubTokenSecret,
 			Owner:             testOwner,
 			Repo:              testRepo,
-			Image:             testImage,
-			RunnerLabels:      testRunnerLabels,
-			WorkVolumeSize:    resource.NewScaledQuantity(testWorkVolumeSizeGigs, resource.Giga),
+			Runner: &runnerv1alpha1.Runner{
+				Image:        testImage,
+				RunnerLabels: testRunnerLabels,
+				WorkVolumeClaimTemplate: &corev1.PersistentVolumeClaimSpec{
+					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse(testWorkVolumeSizeGigs),
+						},
+					},
+				},
+			},
+			Scaling: &runnerv1alpha1.Scaling{
+				PollingInterval: &pollingInterval,
+			},
 		},
 	}
+
 	Expect(k8sClient.Create(ctx, &runner)).Should(Succeed())
 	var secrets []corev1.Secret
 	for _, s := range append(strings.Split(testRunnerSecrets, ","), testGithubTokenSecret) {

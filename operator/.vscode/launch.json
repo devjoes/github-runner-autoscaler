@@ -5,10 +5,20 @@
 			"name": "Debug Operator",
 			"type": "go",
 			"request": "launch",
-			"mode": "auto",
+			"mode": "test",
 			"program": "${workspaceFolder}/main.go",
 			"env": {},
 			"args": []
+		},
+		{
+			"name": "Launch remote",
+			"type": "go",
+			"request": "attach",
+			"mode": "remote",
+			"remotePath": "/home/joe/github-action-autoscaler/operator",
+			"port": 2345,
+			"host": "127.0.0.1",
+			"cwd": "/home/joe/github-action-autoscaler/operator"
 		}
 	]
 }

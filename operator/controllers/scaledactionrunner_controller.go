@@ -29,6 +29,7 @@ import (
 	"github.com/go-logr/logr"
 	keda "github.com/kedacore/keda/v2/api/v1alpha1"
 	"github.com/pingcap/errors"
+	"github.com/r3labs/diff"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -117,7 +118,12 @@ func (r *ScaledActionRunnerReconciler) deleteDependant(ctx context.Context, log 
 
 func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context, log logr.Logger, req ctrl.Request) (*runnerv1alpha1.ScaledActionRunner, error) {
 	scaledActionRunner := &runnerv1alpha1.ScaledActionRunner{}
+	runnerv1alpha1.Setup(scaledActionRunner, req.Namespace)
+	j, _ := json.Marshal(scaledActionRunner)
+	fmt.Printf("Pre get\n\n%s\n\n", string(j))
 	err := r.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, scaledActionRunner)
+	j, _ = json.Marshal(scaledActionRunner)
+	fmt.Printf("Post get\n\n%s\n\n", string(j))
 
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -128,7 +134,6 @@ func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context
 		return nil, err
 	}
 
-	runnerv1alpha1.Setup(scaledActionRunner, req.Namespace)
 	if err = runnerv1alpha1.Validate(ctx, scaledActionRunner, r.Client); err != nil {
 		return nil, err
 	}
@@ -161,11 +166,11 @@ func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log
 
 	if modified {
 		(resourceLog(log, "Updating %s", &so))
-		// changes, err := diff.Diff(so, *updatedSo)
-		// if err != nil {
-		// 	log.Error(err, "errored whilst diffing objects")
-		// }
-		// log.Info("differences", "changes", changes)
+		changes, err := diff.Diff(so, *updatedSo)
+		if err != nil {
+			log.Error(err, "errored whilst diffing objects")
+		}
+		log.Info("differences", "changes", changes)
 		err = r.Update(ctx, updatedSo)
 		if err != nil {
 			log.Error(err, "Failed to update ScaledObject "+so.Name)
@@ -185,26 +190,38 @@ func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv
 		found.ObjectMeta.Namespace = config.Spec.Namespace
 		updated = true
 	}
-	if found.Spec.MinReplicaCount == nil || *found.Spec.MinReplicaCount != config.Spec.MinRunners {
-		found.Spec.MinReplicaCount = &config.Spec.MinRunners
-		updated = true
+	spec := found.Spec
+	if config.Spec.Scaling != nil {
+		// if config.Spec.Scaling.Behavior != nil {
+		// 	spec.Advanced = &keda.AdvancedConfig{
+		// 		HorizontalPodAutoscalerConfig: &keda.HorizontalPodAutoscalerConfig{
+		// 			Behavior: config.Spec.Scaling.Behavior,
+		// 		},
+		// 	}
+		// }
+		spec.CooldownPeriod = config.Spec.Scaling.CooldownPeriod
+		spec.PollingInterval = config.Spec.Scaling.PollingInterval
 	}
-	if found.Spec.MaxReplicaCount == nil || *found.Spec.MaxReplicaCount != config.Spec.MaxRunners {
-		found.Spec.MaxReplicaCount = &config.Spec.MaxRunners
-		updated = true
+	if spec.MinReplicaCount == nil || *spec.MinReplicaCount != config.Spec.MinRunners {
+		spec.MinReplicaCount = &config.Spec.MinRunners
 	}
-	if found.Spec.ScaleTargetRef == nil || found.Spec.Triggers == nil || len(found.Spec.Triggers) == 0 {
+	if spec.MaxReplicaCount == nil || *spec.MaxReplicaCount != config.Spec.MaxRunners {
+		spec.MaxReplicaCount = &config.Spec.MaxRunners
+	}
+	if spec.ScaleTargetRef == nil || spec.Triggers == nil || len(spec.Triggers) == 0 {
 		so := generators.GenerateScaledObject(config, metricsUrl)
-		found.Spec = so.Spec
-		updated = true
+		spec = so.Spec
 	}
-	if found.Spec.ScaleTargetRef.Name != config.Spec.Name {
-		found.Spec.ScaleTargetRef.Name = config.Spec.Name
-		updated = true
+	if spec.ScaleTargetRef.Name != config.Spec.Name {
+		spec.ScaleTargetRef.Name = config.Spec.Name
 	}
 
-	if metricsUrl != found.Spec.Triggers[0].Metadata["url"] {
-		found.Spec.Triggers[0].Metadata["url"] = metricsUrl
+	if metricsUrl != spec.Triggers[0].Metadata["url"] {
+		spec.Triggers[0].Metadata["url"] = metricsUrl
+	}
+
+	if !reflect.DeepEqual(spec, found.Spec) {
+		found.Spec = spec
 		updated = true
 	}
 	return updated
@@ -285,11 +302,11 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 	updatedSs := getScaledSetUpdates(existingSs, config, secretsHash)
 	if updatedSs != nil {
 		resourceLog(log, "Deleting StatefulSet to be recreated on next reconcile %s", updatedSs)
-		// changes, err := diff.Diff(existingSs, updatedSs)
-		// if err != nil {
-		// 	log.Error(err, "errored whilst diffing objects")
-		// }
-		// log.Info("differences", "changes", changes)
+		changes, err := diff.Diff(existingSs, updatedSs)
+		if err != nil {
+			log.Error(err, "errored whilst diffing objects")
+		}
+		log.Info("differences", "changes", changes)
 
 		err = r.Delete(ctx, existingSs)
 		if err != nil {
@@ -318,17 +335,21 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 		updatedSs.ObjectMeta.Annotations[generators.AnnotationSecretsHash] = secretsHash
 		updated = true
 	}
-	if updatedSs.Spec.Template.Spec.Containers[0].Image != config.Spec.Image {
-		updatedSs.Spec.Template.Spec.Containers[0].Image = config.Spec.Image
+	if updatedSs.Spec.Template.Spec.Containers[0].Image != config.Spec.Runner.Image {
+		updatedSs.Spec.Template.Spec.Containers[0].Image = config.Spec.Runner.Image
 		updated = true
 	}
-	volSize := updatedSs.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests.Storage()
-	if volSize.String() != config.Spec.WorkVolumeSize.String() {
-		updatedSs.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests = corev1.ResourceList{
-			corev1.ResourceStorage: *config.Spec.WorkVolumeSize,
+
+	if len(updatedSs.Spec.VolumeClaimTemplates) == 0 || !reflect.DeepEqual(updatedSs.Spec.VolumeClaimTemplates[0].Spec, *config.Spec.Runner.WorkVolumeClaimTemplate) {
+		updatedSs.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+			{
+				Spec:   *config.Spec.Runner.WorkVolumeClaimTemplate,
+				Status: corev1.PersistentVolumeClaimStatus{},
+			},
 		}
 		updated = true
 	}
+
 	updated = generators.SetEnvVars(config, updatedSs) || updated
 	volumes, volumeMounts := generators.GetVolumes(config)
 	if !reflect.DeepEqual(volumes, updatedSs.Spec.Template.Spec.Volumes) {
