@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	"github.com/devjoes/github-runner-autoscaler/operator/generators"
@@ -118,12 +119,7 @@ func (r *ScaledActionRunnerReconciler) deleteDependant(ctx context.Context, log 
 
 func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context, log logr.Logger, req ctrl.Request) (*runnerv1alpha1.ScaledActionRunner, error) {
 	scaledActionRunner := &runnerv1alpha1.ScaledActionRunner{}
-	runnerv1alpha1.Setup(scaledActionRunner, req.Namespace)
-	j, _ := json.Marshal(scaledActionRunner)
-	fmt.Printf("Pre get\n\n%s\n\n", string(j))
 	err := r.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, scaledActionRunner)
-	j, _ = json.Marshal(scaledActionRunner)
-	fmt.Printf("Post get\n\n%s\n\n", string(j))
 
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -134,6 +130,7 @@ func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context
 		return nil, err
 	}
 
+	runnerv1alpha1.Setup(scaledActionRunner, req.Namespace)
 	if err = runnerv1alpha1.Validate(ctx, scaledActionRunner, r.Client); err != nil {
 		return nil, err
 	}
@@ -192,13 +189,13 @@ func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv
 	}
 	spec := found.Spec
 	if config.Spec.Scaling != nil {
-		// if config.Spec.Scaling.Behavior != nil {
-		// 	spec.Advanced = &keda.AdvancedConfig{
-		// 		HorizontalPodAutoscalerConfig: &keda.HorizontalPodAutoscalerConfig{
-		// 			Behavior: config.Spec.Scaling.Behavior,
-		// 		},
-		// 	}
-		// }
+		if config.Spec.Scaling.Behavior != nil {
+			spec.Advanced = &keda.AdvancedConfig{
+				HorizontalPodAutoscalerConfig: &keda.HorizontalPodAutoscalerConfig{
+					Behavior: config.Spec.Scaling.Behavior,
+				},
+			}
+		}
 		spec.CooldownPeriod = config.Spec.Scaling.CooldownPeriod
 		spec.PollingInterval = config.Spec.Scaling.PollingInterval
 	}
@@ -308,9 +305,21 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 		}
 		log.Info("differences", "changes", changes)
 
+		key := client.ObjectKeyFromObject(existingSs)
 		err = r.Delete(ctx, existingSs)
 		if err != nil {
-			log.Error(err, "Failed to delete StatefulSet "+updatedSs.Name)
+			log.Error(err, "Failed to delete StatefulSet "+existingSs.Name)
+		}
+		deleted := false
+		secs := 0
+		for !deleted && secs < 60 {
+			secs++
+			deleted = r.Client.Get(ctx, key, &appsv1.StatefulSet{}) != nil
+			time.Sleep(time.Second)
+		}
+		err = r.Create(ctx, updatedSs)
+		if err != nil {
+			log.Error(err, "Failed to create StatefulSet "+updatedSs.Name)
 		}
 	}
 	return updatedSs != nil, nil

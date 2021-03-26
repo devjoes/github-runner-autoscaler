@@ -5,7 +5,7 @@
 			"name": "Debug Operator",
 			"type": "go",
 			"request": "launch",
-			"mode": "test",
+			"mode": "auto",
 			"program": "${workspaceFolder}/main.go",
 			"env": {},
 			"args": []

@@ -19,10 +19,8 @@ func getLabels(name string) map[string]string {
 	return map[string]string{"app": "github_runner", "github_runner_cr": name}
 }
 
-func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *keda.ScaledObject {
-	ls := getLabels(c.Name)
-	spec := keda.ScaledObjectSpec{}
-
+//TODO: Take this approach for StatefulSets too
+func UpdateScaledObjectSpec(c *runnerv1alpha1.ScaledActionRunner, url string, spec *keda.ScaledObjectSpec) {
 	spec.ScaleTargetRef = &keda.ScaleTarget{
 		Kind:       "StatefulSet",
 		Name:       c.Spec.Name,
@@ -55,6 +53,12 @@ func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *ked
 			}
 		}
 	}
+}
+
+func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *keda.ScaledObject {
+	ls := getLabels(c.Name)
+	spec := keda.ScaledObjectSpec{}
+	UpdateScaledObjectSpec(c, url, &spec)
 
 	resource := keda.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{Name: c.Spec.Name, Namespace: c.Spec.Namespace, Labels: ls},
