@@ -82,13 +82,13 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	setModified, err := r.syncStatefulSet(ctx, log, runner)
-	if err != nil {
-		return ctrl.Result{}, err
+	setModified, setErr := r.syncStatefulSet(ctx, log, runner)
+	scaledObjectModified, objErr := r.syncScaledObject(ctx, log, runner)
+	if setErr != nil {
+		return ctrl.Result{}, setErr
 	}
-	scaledObjectModified, err := r.syncScaledObject(ctx, log, runner)
-	if err != nil {
-		return ctrl.Result{}, err
+	if objErr != nil {
+		return ctrl.Result{}, objErr
 	}
 
 	return ctrl.Result{Requeue: setModified || scaledObjectModified}, nil
@@ -330,27 +330,27 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 	updatedSs := oldSs.DeepCopyObject().(*appsv1.StatefulSet)
 	updated := false
 
-	if updatedSs.ObjectMeta.Name != config.ObjectMeta.Name {
+	if oldSs.ObjectMeta.Name != config.ObjectMeta.Name {
 		updatedSs.ObjectMeta.Name = config.ObjectMeta.Name
 		updated = true
 	}
-	if updatedSs.ObjectMeta.Namespace != config.ObjectMeta.Namespace {
+	if oldSs.ObjectMeta.Namespace != config.ObjectMeta.Namespace {
 		updatedSs.ObjectMeta.Namespace = config.ObjectMeta.Namespace
 		updated = true
 	}
-	if updatedSs.ObjectMeta.Annotations == nil {
+	if oldSs.ObjectMeta.Annotations == nil {
 		updatedSs.ObjectMeta.Annotations = make(map[string]string)
 	}
-	if updatedSs.ObjectMeta.Annotations[generators.AnnotationSecretsHash] != secretsHash {
+	if oldSs.ObjectMeta.Annotations[generators.AnnotationSecretsHash] != secretsHash {
 		updatedSs.ObjectMeta.Annotations[generators.AnnotationSecretsHash] = secretsHash
 		updated = true
 	}
-	if updatedSs.Spec.Template.Spec.Containers[0].Image != config.Spec.Runner.Image {
+	if oldSs.Spec.Template.Spec.Containers[0].Image != config.Spec.Runner.Image {
 		updatedSs.Spec.Template.Spec.Containers[0].Image = config.Spec.Runner.Image
 		updated = true
 	}
 
-	if len(updatedSs.Spec.VolumeClaimTemplates) == 0 || !reflect.DeepEqual(updatedSs.Spec.VolumeClaimTemplates[0].Spec, *config.Spec.Runner.WorkVolumeClaimTemplate) {
+	if len(oldSs.Spec.VolumeClaimTemplates) == 0 || !reflect.DeepEqual(oldSs.Spec.VolumeClaimTemplates[0].Spec, *config.Spec.Runner.WorkVolumeClaimTemplate) {
 		var filesystem corev1.PersistentVolumeMode = "Filesystem"
 		updatedSs.Spec.VolumeClaimTemplates[0].Spec.VolumeMode = &filesystem
 		if !reflect.DeepEqual(updatedSs.Spec.VolumeClaimTemplates[0].Spec, *config.Spec.Runner.WorkVolumeClaimTemplate) {
@@ -368,21 +368,21 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 
 	updated = generators.SetEnvVars(config, updatedSs) || updated
 	volumes, volumeMounts := generators.GetVolumes(config)
-	if !reflect.DeepEqual(volumes, updatedSs.Spec.Template.Spec.Volumes) {
+	if !reflect.DeepEqual(volumes, oldSs.Spec.Template.Spec.Volumes) {
 		updatedSs.Spec.Template.Spec.Volumes = volumes
 		updated = true
 	}
-	if !reflect.DeepEqual(volumeMounts, updatedSs.Spec.Template.Spec.Containers[0].VolumeMounts) {
+	if !reflect.DeepEqual(volumeMounts, oldSs.Spec.Template.Spec.Containers[0].VolumeMounts) {
 		updatedSs.Spec.Template.Spec.Containers[0].VolumeMounts = volumeMounts
 		updated = true
 	}
-	requests := updatedSs.Spec.Template.Spec.Containers[0].Resources.Requests
+	requests := oldSs.Spec.Template.Spec.Containers[0].Resources.Requests
 	if !requests[corev1.ResourceCPU].Equal((*config.Spec.Runner.Requests)[corev1.ResourceCPU]) ||
 		!requests[corev1.ResourceMemory].Equal((*config.Spec.Runner.Requests)[corev1.ResourceMemory]) {
 		updatedSs.Spec.Template.Spec.Containers[0].Resources.Requests = *config.Spec.Runner.Requests
 		updated = true
 	}
-	limits := updatedSs.Spec.Template.Spec.Containers[0].Resources.Limits
+	limits := oldSs.Spec.Template.Spec.Containers[0].Resources.Limits
 	if !limits[corev1.ResourceCPU].Equal((*config.Spec.Runner.Limits)[corev1.ResourceCPU]) ||
 		!limits[corev1.ResourceMemory].Equal((*config.Spec.Runner.Limits)[corev1.ResourceMemory]) {
 		updatedSs.Spec.Template.Spec.Containers[0].Resources.Limits = *config.Spec.Runner.Limits
