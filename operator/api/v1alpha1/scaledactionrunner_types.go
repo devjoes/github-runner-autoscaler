@@ -44,6 +44,7 @@ type ScaledActionRunnerSpec struct {
 	Owner             string   `json:"owner"`
 	Repo              string   `json:"repo"`
 	Scaling           *Scaling `json:"scaling,omitempty"`
+	ScaleFactor       *float64 `json:"scaleFactor,omitempty"`
 	Runner            *Runner  `json:"runner,omitempty"`
 }
 
@@ -124,6 +125,10 @@ func Setup(sr *ScaledActionRunner, crNamespace string) {
 			},
 			VolumeMode: (*corev1.PersistentVolumeMode)(&filesystmem),
 		}
+	}
+	if spec.ScaleFactor == nil {
+		var sf float64 = 1
+		spec.ScaleFactor = &sf
 	}
 
 }
