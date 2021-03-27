@@ -48,9 +48,11 @@ type ScaledActionRunnerSpec struct {
 }
 
 type Runner struct {
-	Image                   string                            `json:"runnerImage,omitempty"`
-	RunnerLabels            string                            `json:"runnerLabels"`
-	WorkVolumeClaimTemplate *corev1.PersistentVolumeClaimSpec `json:"workVolumeClaimTemplate,omitempty"`
+	Image                   string                                     `json:"image,omitempty"`
+	Labels                  string                                     `json:"labels,omitempty"`
+	WorkVolumeClaimTemplate *corev1.PersistentVolumeClaimSpec          `json:"workVolumeClaimTemplate,omitempty"`
+	Limits                  *map[corev1.ResourceName]resource.Quantity `json:"limits,omitempty"`
+	Requests                *map[corev1.ResourceName]resource.Quantity `json:"requests,omitempty"`
 }
 
 type Scaling struct {
@@ -98,6 +100,18 @@ func Setup(sr *ScaledActionRunner, crNamespace string) {
 	}
 	if spec.Runner.Image == "" {
 		spec.Runner.Image = DefaultImage
+	}
+	if spec.Runner.Requests == nil {
+		spec.Runner.Requests = &map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+			corev1.ResourceMemory: resource.MustParse("200Mi"),
+		}
+	}
+	if spec.Runner.Limits == nil {
+		spec.Runner.Limits = &map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceCPU:    resource.MustParse("2000m"),
+			corev1.ResourceMemory: resource.MustParse("2000Mi"),
+		}
 	}
 	if spec.Runner.WorkVolumeClaimTemplate == nil {
 		filesystmem := "Filesystem"

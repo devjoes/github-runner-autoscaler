@@ -376,6 +376,18 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 		updatedSs.Spec.Template.Spec.Containers[0].VolumeMounts = volumeMounts
 		updated = true
 	}
+	requests := updatedSs.Spec.Template.Spec.Containers[0].Resources.Requests
+	if !requests[corev1.ResourceCPU].Equal((*config.Spec.Runner.Requests)[corev1.ResourceCPU]) ||
+		!requests[corev1.ResourceMemory].Equal((*config.Spec.Runner.Requests)[corev1.ResourceMemory]) {
+		updatedSs.Spec.Template.Spec.Containers[0].Resources.Requests = *config.Spec.Runner.Requests
+		updated = true
+	}
+	limits := updatedSs.Spec.Template.Spec.Containers[0].Resources.Limits
+	if !limits[corev1.ResourceCPU].Equal((*config.Spec.Runner.Limits)[corev1.ResourceCPU]) ||
+		!limits[corev1.ResourceMemory].Equal((*config.Spec.Runner.Limits)[corev1.ResourceMemory]) {
+		updatedSs.Spec.Template.Spec.Containers[0].Resources.Limits = *config.Spec.Runner.Limits
+		updated = true
+	}
 	if updated {
 		return updatedSs
 	}

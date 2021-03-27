@@ -23,6 +23,7 @@ package v1alpha1
 import (
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -33,6 +34,28 @@ func (in *Runner) DeepCopyInto(out *Runner) {
 		in, out := &in.WorkVolumeClaimTemplate, &out.WorkVolumeClaimTemplate
 		*out = new(v1.PersistentVolumeClaimSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.Limits != nil {
+		in, out := &in.Limits, &out.Limits
+		*out = new(map[v1.ResourceName]resource.Quantity)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make(map[v1.ResourceName]resource.Quantity, len(*in))
+			for key, val := range *in {
+				(*out)[key] = val.DeepCopy()
+			}
+		}
+	}
+	if in.Requests != nil {
+		in, out := &in.Requests, &out.Requests
+		*out = new(map[v1.ResourceName]resource.Quantity)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make(map[v1.ResourceName]resource.Quantity, len(*in))
+			for key, val := range *in {
+				(*out)[key] = val.DeepCopy()
+			}
+		}
 	}
 }
 

@@ -32,6 +32,8 @@ const (
 	testRepo                = "test"
 	testImage               = "foo"
 	testRunnerLabels        = "foo,bar"
+	testRequests            = "123"
+	testLimits              = "234"
 	testPollingInterval     = int32(30)
 	testStabalizationWindow = int32(60)
 
@@ -66,6 +68,10 @@ var _ = Describe("ScaledActionRunner controller", func() {
 				}
 				Expect(secs).To(ConsistOf(append(strings.Split(testRunnerSecrets, ","))))
 				Expect(ss.Spec.Template.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{Name: "LABELS", Value: testRunnerLabels}))
+				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Requests.Cpu().String()).To((Equal(testRequests + "m")))
+				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()).To((Equal(testRequests + "Mi")))
+				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()).To((Equal(testLimits + "m")))
+				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()).To((Equal(testLimits + "Mi")))
 				Expect(ss.Annotations[generators.AnnotationSecretsHash]).NotTo(BeNil())
 				Expect(*so.Spec.MaxReplicaCount).To(BeEquivalentTo(testMaxRunners))
 				Expect(*so.Spec.MinReplicaCount).To(BeEquivalentTo(testMinRunners))
@@ -99,6 +105,10 @@ var _ = Describe("ScaledActionRunner controller", func() {
 				}
 				Expect(secs).To(Not(ConsistOf(append(strings.Split(testRunnerSecrets, ",")))))
 				Expect(ss.Spec.Template.Spec.Containers[0].Env).To(Not(ContainElement(corev1.EnvVar{Name: "LABELS", Value: testRunnerLabels})))
+				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Requests.Cpu().String()).To(Not(Equal(testRequests + "m")))
+				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()).To(Not(Equal(testRequests + "Mi")))
+				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()).To(Not(Equal(testLimits + "m")))
+				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()).To(Not(Equal(testLimits + "Mi")))
 				Expect(ss.Annotations[generators.AnnotationSecretsHash]).NotTo(BeNil())
 				Expect(*so.Spec.MaxReplicaCount).To(Not(BeEquivalentTo(testMaxRunners)))
 				Expect(*so.Spec.MinReplicaCount).To(Not(BeEquivalentTo(testMinRunners)))
@@ -155,8 +165,16 @@ func createTestScaledActionRunner(ctx context.Context, k8sClient client.Client) 
 			Owner:             testOwner,
 			Repo:              testRepo,
 			Runner: &runnerv1alpha1.Runner{
-				Image:        testImage,
-				RunnerLabels: testRunnerLabels,
+				Image:  testImage,
+				Labels: testRunnerLabels,
+				Requests: &map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceCPU:    resource.MustParse(testRequests + "m"),
+					corev1.ResourceMemory: resource.MustParse(testRequests + "Mi"),
+				},
+				Limits: &map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceCPU:    resource.MustParse(testLimits + "m"),
+					corev1.ResourceMemory: resource.MustParse(testLimits + "Mi"),
+				},
 				WorkVolumeClaimTemplate: &corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
 					VolumeMode:  &filesystem,
@@ -217,8 +235,16 @@ func updateTestScaledActionRunner(ctx context.Context, k8sClient client.Client, 
 			Owner:             reverse(testOwner),
 			Repo:              reverse(testRepo),
 			Runner: &runnerv1alpha1.Runner{
-				Image:        reverse(testImage),
-				RunnerLabels: reverse(testRunnerLabels),
+				Image:  reverse(testImage),
+				Labels: reverse(testRunnerLabels),
+				Requests: &map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceCPU:    resource.MustParse(reverse(testRequests) + "m"),
+					corev1.ResourceMemory: resource.MustParse(reverse(testRequests) + "Mi"),
+				},
+				Limits: &map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceCPU:    resource.MustParse(reverse(testLimits) + "m"),
+					corev1.ResourceMemory: resource.MustParse(reverse(testLimits) + "Mi"),
+				},
 				WorkVolumeClaimTemplate: &corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
 					VolumeMode:  &filesystem,

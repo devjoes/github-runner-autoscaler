@@ -186,8 +186,8 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 			Value: "/work",
 		},
 	}
-	if c.Spec.Runner.RunnerLabels != "" {
-		toSet["LABELS"] = corev1.EnvVar{Name: "LABELS", Value: c.Spec.Runner.RunnerLabels}
+	if c.Spec.Runner.Labels != "" {
+		toSet["LABELS"] = corev1.EnvVar{Name: "LABELS", Value: c.Spec.Runner.Labels}
 	}
 	for i, e := range statefulSet.Spec.Template.Spec.Containers[0].Env {
 		if newVal, found := toSet[e.Name]; found {
@@ -198,6 +198,8 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 			delete(toSet, e.Name)
 		}
 	}
+	statefulSet.Spec.Template.Spec.Containers[0].Resources.Requests = *c.Spec.Runner.Requests
+	statefulSet.Spec.Template.Spec.Containers[0].Resources.Limits = *c.Spec.Runner.Limits
 	for _, e := range toSet {
 		modified = true
 		statefulSet.Spec.Template.Spec.Containers[0].Env = append(statefulSet.Spec.Template.Spec.Containers[0].Env, e)
