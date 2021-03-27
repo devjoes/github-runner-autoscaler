@@ -62,12 +62,12 @@ var _ = BeforeSuite(func(done Done) {
 		},
 	}
 
-	err := keda.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-
 	cfg, err := testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
+
+	err = keda.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
 
 	err = runnerv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())

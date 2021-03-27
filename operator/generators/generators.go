@@ -6,7 +6,6 @@ import (
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 
 	keda "github.com/kedacore/keda/v2/api/v1alpha1"
@@ -20,64 +19,50 @@ func getLabels(name string) map[string]string {
 	return map[string]string{"app": "github_runner", "github_runner_cr": name}
 }
 
+//TODO: Take this approach for StatefulSets too
+func UpdateScaledObjectSpec(c *runnerv1alpha1.ScaledActionRunner, url string, spec *keda.ScaledObjectSpec) {
+	spec.ScaleTargetRef = &keda.ScaleTarget{
+		Kind:       "StatefulSet",
+		Name:       c.ObjectMeta.Name,
+		APIVersion: "apps/v1",
+	}
+	spec.MinReplicaCount = &c.Spec.MinRunners
+	spec.MaxReplicaCount = &c.Spec.MaxRunners
+	spec.Triggers = []keda.ScaleTriggers{
+		{
+			Type: "metrics-api",
+			AuthenticationRef: &keda.ScaledObjectAuthRef{
+				Name: "certs",
+			},
+			Metadata: map[string]string{
+				"targetValue":   "1",
+				"url":           url,
+				"valueLocation": "items.0.value",
+				"authMode":      "tls",
+			},
+		},
+	}
+	if c.Spec.Scaling != nil {
+		spec.CooldownPeriod = c.Spec.Scaling.CooldownPeriod
+		spec.PollingInterval = c.Spec.Scaling.PollingInterval
+		if c.Spec.Scaling.Behavior != nil {
+			spec.Advanced = &keda.AdvancedConfig{
+				HorizontalPodAutoscalerConfig: &keda.HorizontalPodAutoscalerConfig{
+					Behavior: c.Spec.Scaling.Behavior,
+				},
+			}
+		}
+	}
+}
+
 func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *keda.ScaledObject {
 	ls := getLabels(c.Name)
-	var pollingInterval int32 = 30
-	var cooldownPeriod int32 = 120
-	var upStabilizationWindowSeconds int32 = 30
-	var upValue int32 = 100
-	var upPeriodSeconds int32 = 30
+	spec := keda.ScaledObjectSpec{}
+	UpdateScaledObjectSpec(c, url, &spec)
+
 	resource := keda.ScaledObject{
-		ObjectMeta: metav1.ObjectMeta{Name: c.Spec.Name, Namespace: c.Spec.Namespace, Labels: ls},
-		Spec: keda.ScaledObjectSpec{
-			MinReplicaCount: &c.Spec.MinRunners,
-			MaxReplicaCount: &c.Spec.MaxRunners,
-			ScaleTargetRef: &keda.ScaleTarget{
-				Kind:       "StatefulSet",
-				Name:       c.Spec.Name,
-				APIVersion: "apps/v1",
-			},
-			Triggers: []keda.ScaleTriggers{
-				{
-					Type: "metrics-api",
-					AuthenticationRef: &keda.ScaledObjectAuthRef{
-						Name: "certs",
-					},
-					Metadata: map[string]string{
-						"targetValue":   "1", //TODO: Should this be 0? it errors
-						"url":           url,
-						"valueLocation": "items.0.value",
-						"authMode":      "tls",
-					},
-				},
-			},
-			PollingInterval: &pollingInterval,
-			CooldownPeriod:  &cooldownPeriod,
-			Advanced: &keda.AdvancedConfig{
-				HorizontalPodAutoscalerConfig: &keda.HorizontalPodAutoscalerConfig{
-					Behavior: &v2beta2.HorizontalPodAutoscalerBehavior{
-						ScaleUp: &v2beta2.HPAScalingRules{
-							StabilizationWindowSeconds: &upStabilizationWindowSeconds,
-							Policies: []v2beta2.HPAScalingPolicy{
-								v2beta2.HPAScalingPolicy{
-									Value:         upValue,
-									PeriodSeconds: upPeriodSeconds,
-									Type:          v2beta2.PercentScalingPolicy,
-								},
-							},
-						},
-					},
-				},
-			},
-			//TODO: add - or just merge from own config
-			// pollingInterval: 1
-			// cooldownPeriod: 1800 # Wait 30 mins before scaling to 0
-			// advanced:
-			//   horizontalPodAutoscalerConfig:
-			// 	behavior:
-			// 	  scaleDown:
-			// 		stabilizationWindowSeconds: 300
-		},
+		ObjectMeta: metav1.ObjectMeta{Name: c.ObjectMeta.Name, Namespace: c.ObjectMeta.Namespace, Labels: ls},
+		Spec:       spec,
 	}
 	return &resource
 }
@@ -87,12 +72,10 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 	as := map[string]string{
 		AnnotationSecretsHash: secretsHash,
 	}
-
-	var manual string = "manual"
 	resource := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        c.Spec.Name,
-			Namespace:   c.Spec.Namespace,
+			Name:        c.ObjectMeta.Name,
+			Namespace:   c.ObjectMeta.Namespace,
 			Labels:      ls,
 			Annotations: as,
 		},
@@ -108,7 +91,7 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{},
 					Containers: []corev1.Container{{
-						Image:        c.Spec.Image,
+						Image:        c.Spec.Runner.Image,
 						Name:         "runner",
 						Env:          []corev1.EnvVar{},
 						VolumeMounts: []corev1.VolumeMount{},
@@ -119,15 +102,7 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "workdir",
 					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-						StorageClassName: &manual,
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: *c.Spec.WorkVolumeSize,
-							},
-						},
-					},
+					Spec: *c.Spec.Runner.WorkVolumeClaimTemplate,
 				},
 			},
 		},
@@ -166,7 +141,7 @@ func GetVolumes(c *runnerv1alpha1.ScaledActionRunner) ([]corev1.Volume, []corev1
 	}
 
 	for i := 0; i < int(c.Spec.MaxRunners); i++ {
-		name := fmt.Sprintf("%s-%d", c.Spec.Name, i)
+		name := fmt.Sprintf("%s-%d", c.ObjectMeta.Name, i)
 		if i >= len(c.Spec.RunnerSecrets) {
 			break
 		}
@@ -211,8 +186,8 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 			Value: "/work",
 		},
 	}
-	if c.Spec.RunnerLabels != "" {
-		toSet["LABELS"] = corev1.EnvVar{Name: "LABELS", Value: c.Spec.RunnerLabels}
+	if c.Spec.Runner.RunnerLabels != "" {
+		toSet["LABELS"] = corev1.EnvVar{Name: "LABELS", Value: c.Spec.Runner.RunnerLabels}
 	}
 	for i, e := range statefulSet.Spec.Template.Spec.Containers[0].Env {
 		if newVal, found := toSet[e.Name]; found {

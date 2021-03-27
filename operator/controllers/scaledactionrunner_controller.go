@@ -23,12 +23,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	"github.com/devjoes/github-runner-autoscaler/operator/generators"
 	"github.com/go-logr/logr"
 	keda "github.com/kedacore/keda/v2/api/v1alpha1"
 	"github.com/pingcap/errors"
+	"github.com/r3labs/diff"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -137,10 +139,10 @@ func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context
 func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log logr.Logger, config *runnerv1alpha1.ScaledActionRunner) (bool, error) {
 	//TODO: make these configurable
 	metricsEndpoint := "external-metrics-apiserver.runners.svc.cluster.local"
-	metricsUrl := fmt.Sprintf("https://%s/apis/external.metrics.k8s.io/v1beta1/namespaces/%s/%s", metricsEndpoint, config.Spec.Namespace, config.Spec.Name)
+	metricsUrl := fmt.Sprintf("https://%s/apis/external.metrics.k8s.io/v1beta1/namespaces/%s/%s", metricsEndpoint, config.ObjectMeta.Namespace, config.ObjectMeta.Name)
 
 	var so keda.ScaledObject
-	err := r.Get(ctx, types.NamespacedName{Name: config.Spec.Name, Namespace: config.Spec.Namespace}, &so)
+	err := r.Get(ctx, types.NamespacedName{Name: config.ObjectMeta.Name, Namespace: config.ObjectMeta.Namespace}, &so)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			so = *generators.GenerateScaledObject(config, metricsUrl)
@@ -161,11 +163,11 @@ func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log
 
 	if modified {
 		(resourceLog(log, "Updating %s", &so))
-		// changes, err := diff.Diff(so, *updatedSo)
-		// if err != nil {
-		// 	log.Error(err, "errored whilst diffing objects")
-		// }
-		// log.Info("differences", "changes", changes)
+		changes, err := diff.Diff(so, *updatedSo)
+		if err != nil {
+			log.Error(err, "errored whilst diffing objects")
+		}
+		log.Info("differences", "changes", changes)
 		err = r.Update(ctx, updatedSo)
 		if err != nil {
 			log.Error(err, "Failed to update ScaledObject "+so.Name)
@@ -177,34 +179,46 @@ func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log
 
 func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv1alpha1.ScaledActionRunner, metricsUrl string) bool {
 	updated := false
-	if found.ObjectMeta.Name != config.Spec.Name {
-		found.ObjectMeta.Name = config.Spec.Name
+	if found.ObjectMeta.Name != config.ObjectMeta.Name {
+		found.ObjectMeta.Name = config.ObjectMeta.Name
 		updated = true
 	}
-	if found.ObjectMeta.Namespace != config.Spec.Namespace {
-		found.ObjectMeta.Namespace = config.Spec.Namespace
+	if found.ObjectMeta.Namespace != config.ObjectMeta.Namespace {
+		found.ObjectMeta.Namespace = config.ObjectMeta.Namespace
 		updated = true
 	}
-	if found.Spec.MinReplicaCount == nil || *found.Spec.MinReplicaCount != config.Spec.MinRunners {
-		found.Spec.MinReplicaCount = &config.Spec.MinRunners
-		updated = true
+	spec := found.Spec
+	if config.Spec.Scaling != nil {
+		if config.Spec.Scaling.Behavior != nil {
+			spec.Advanced = &keda.AdvancedConfig{
+				HorizontalPodAutoscalerConfig: &keda.HorizontalPodAutoscalerConfig{
+					Behavior: config.Spec.Scaling.Behavior,
+				},
+			}
+		}
+		spec.CooldownPeriod = config.Spec.Scaling.CooldownPeriod
+		spec.PollingInterval = config.Spec.Scaling.PollingInterval
 	}
-	if found.Spec.MaxReplicaCount == nil || *found.Spec.MaxReplicaCount != config.Spec.MaxRunners {
-		found.Spec.MaxReplicaCount = &config.Spec.MaxRunners
-		updated = true
+	if spec.MinReplicaCount == nil || *spec.MinReplicaCount != config.Spec.MinRunners {
+		spec.MinReplicaCount = &config.Spec.MinRunners
 	}
-	if found.Spec.ScaleTargetRef == nil || found.Spec.Triggers == nil || len(found.Spec.Triggers) == 0 {
+	if spec.MaxReplicaCount == nil || *spec.MaxReplicaCount != config.Spec.MaxRunners {
+		spec.MaxReplicaCount = &config.Spec.MaxRunners
+	}
+	if spec.ScaleTargetRef == nil || spec.Triggers == nil || len(spec.Triggers) == 0 {
 		so := generators.GenerateScaledObject(config, metricsUrl)
-		found.Spec = so.Spec
-		updated = true
+		spec = so.Spec
 	}
-	if found.Spec.ScaleTargetRef.Name != config.Spec.Name {
-		found.Spec.ScaleTargetRef.Name = config.Spec.Name
-		updated = true
+	if spec.ScaleTargetRef.Name != config.ObjectMeta.Name {
+		spec.ScaleTargetRef.Name = config.ObjectMeta.Name
 	}
 
-	if metricsUrl != found.Spec.Triggers[0].Metadata["url"] {
-		found.Spec.Triggers[0].Metadata["url"] = metricsUrl
+	if metricsUrl != spec.Triggers[0].Metadata["url"] {
+		spec.Triggers[0].Metadata["url"] = metricsUrl
+	}
+
+	if !reflect.DeepEqual(spec, found.Spec) {
+		found.Spec = spec
 		updated = true
 	}
 	return updated
@@ -215,7 +229,7 @@ func (r *ScaledActionRunnerReconciler) getSecretsHash(ctx context.Context, c *ru
 	getHash := func(secName string) ([]byte, error) {
 		var secret corev1.Secret
 		nsName := types.NamespacedName{
-			Namespace: c.Spec.Namespace,
+			Namespace: c.ObjectMeta.Namespace,
 			Name:      secName,
 		}
 		if err := r.Get(ctx, nsName, &secret); err != nil {
@@ -265,7 +279,7 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 
 	newSs := generators.GenerateStatefulSet(config, secretsHash)
 	existingSs := &appsv1.StatefulSet{}
-	err = r.Get(ctx, types.NamespacedName{Name: config.Spec.Name, Namespace: config.Spec.Namespace}, existingSs)
+	err = r.Get(ctx, types.NamespacedName{Name: config.ObjectMeta.Name, Namespace: config.ObjectMeta.Namespace}, existingSs)
 
 	if err != nil && errors.IsNotFound(err) {
 		(resourceLog(log, "Creating a new StatefulSet %s", newSs))
@@ -278,22 +292,35 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 		// StatefulSet created successfully - return and requeue
 		return true, nil
 	} else if err != nil {
-		log.Error(err, "Failed to get StatefulSet "+config.Spec.Name)
+		log.Error(err, "Failed to get StatefulSet "+config.ObjectMeta.Name)
 		return false, err
 	}
 
 	updatedSs := getScaledSetUpdates(existingSs, config, secretsHash)
 	if updatedSs != nil {
-		resourceLog(log, "Deleting StatefulSet to be recreated on next reconcile %s", updatedSs)
-		// changes, err := diff.Diff(existingSs, updatedSs)
-		// if err != nil {
-		// 	log.Error(err, "errored whilst diffing objects")
-		// }
-		// log.Info("differences", "changes", changes)
+		resourceLog(log, "Deleting and recreating StatefulSet %s", updatedSs)
+		changes, err := diff.Diff(existingSs, updatedSs)
+		if err != nil {
+			log.Error(err, "errored whilst diffing objects")
+		}
+		log.Info("differences", "changes", changes)
 
+		key := client.ObjectKeyFromObject(existingSs)
 		err = r.Delete(ctx, existingSs)
 		if err != nil {
-			log.Error(err, "Failed to delete StatefulSet "+updatedSs.Name)
+			log.Error(err, "Failed to delete StatefulSet "+existingSs.Name)
+		}
+		deleted := false
+		iterations := 0
+		for !deleted && iterations < 60 {
+			iterations++
+			deleted = r.Client.Get(ctx, key, &appsv1.StatefulSet{}) != nil
+			time.Sleep(time.Millisecond * 25)
+		}
+		updatedSs.ResourceVersion = "0x0"
+		err = r.Create(ctx, updatedSs)
+		if err != nil {
+			log.Error(err, "Failed to create StatefulSet "+updatedSs.Name)
 		}
 	}
 	return updatedSs != nil, nil
@@ -303,12 +330,12 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 	updatedSs := oldSs.DeepCopyObject().(*appsv1.StatefulSet)
 	updated := false
 
-	if updatedSs.ObjectMeta.Name != config.Spec.Name {
-		updatedSs.ObjectMeta.Name = config.Spec.Name
+	if updatedSs.ObjectMeta.Name != config.ObjectMeta.Name {
+		updatedSs.ObjectMeta.Name = config.ObjectMeta.Name
 		updated = true
 	}
-	if updatedSs.ObjectMeta.Namespace != config.Spec.Namespace {
-		updatedSs.ObjectMeta.Namespace = config.Spec.Namespace
+	if updatedSs.ObjectMeta.Namespace != config.ObjectMeta.Namespace {
+		updatedSs.ObjectMeta.Namespace = config.ObjectMeta.Namespace
 		updated = true
 	}
 	if updatedSs.ObjectMeta.Annotations == nil {
@@ -318,17 +345,27 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 		updatedSs.ObjectMeta.Annotations[generators.AnnotationSecretsHash] = secretsHash
 		updated = true
 	}
-	if updatedSs.Spec.Template.Spec.Containers[0].Image != config.Spec.Image {
-		updatedSs.Spec.Template.Spec.Containers[0].Image = config.Spec.Image
+	if updatedSs.Spec.Template.Spec.Containers[0].Image != config.Spec.Runner.Image {
+		updatedSs.Spec.Template.Spec.Containers[0].Image = config.Spec.Runner.Image
 		updated = true
 	}
-	volSize := updatedSs.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests.Storage()
-	if volSize.String() != config.Spec.WorkVolumeSize.String() {
-		updatedSs.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests = corev1.ResourceList{
-			corev1.ResourceStorage: *config.Spec.WorkVolumeSize,
+
+	if len(updatedSs.Spec.VolumeClaimTemplates) == 0 || !reflect.DeepEqual(updatedSs.Spec.VolumeClaimTemplates[0].Spec, *config.Spec.Runner.WorkVolumeClaimTemplate) {
+		var filesystem corev1.PersistentVolumeMode = "Filesystem"
+		updatedSs.Spec.VolumeClaimTemplates[0].Spec.VolumeMode = &filesystem
+		if !reflect.DeepEqual(updatedSs.Spec.VolumeClaimTemplates[0].Spec, *config.Spec.Runner.WorkVolumeClaimTemplate) {
+			updatedSs.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+				corev1.PersistentVolumeClaim{
+					ObjectMeta: updatedSs.Spec.VolumeClaimTemplates[0].ObjectMeta,
+					Spec:       *config.Spec.Runner.WorkVolumeClaimTemplate,
+					Status:     corev1.PersistentVolumeClaimStatus{},
+				},
+			}
+
+			updated = true
 		}
-		updated = true
 	}
+
 	updated = generators.SetEnvVars(config, updatedSs) || updated
 	volumes, volumeMounts := generators.GetVolumes(config)
 	if !reflect.DeepEqual(volumes, updatedSs.Spec.Template.Spec.Volumes) {
