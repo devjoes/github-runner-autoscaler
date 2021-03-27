@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -85,7 +84,6 @@ var _ = Describe("ScaledActionRunner controller", func() {
 				if ss == nil || so == nil {
 					return false
 				}
-				fmt.Println(ss.ObjectMeta.ResourceVersion)
 				if ss.ObjectMeta.ResourceVersion == ssVer || so.ObjectMeta.ResourceVersion == soVer {
 					return false
 				}
