@@ -60,8 +60,7 @@ func (c *Config) GetWorkflow(key string) (*GithubWorkflowConfig, error) {
 
 func getKey(obj interface{}) (string, error) {
 	wfc := obj.(GithubWorkflowConfig)
-	//return fmt.Sprintf("%s_%s", wfc.Owner, wfc.Repository), nil
-	return wfc.Name, nil //TODO: Introduct metric name prop
+	return wfc.Name, nil
 }
 
 func getNamespacedClients(runnerClient runnerclient.IRunnersV1Alpha1Client, runnerNSs []string) []runnerclient.IScaledActionRunnerClient {
@@ -93,7 +92,7 @@ func (c *Config) copyAllWorkflows(ctx context.Context, k8sClient kubernetes.Inte
 	for _, r := range runners {
 		wf, err := workflowFromScaledActionRunner(ctx, k8sClient, r)
 		if err != nil {
-			fmt.Printf("Failed to copy workflow from runner %s/%s: %s", r.Spec.Namespace, r.Spec.Name, err.Error())
+			fmt.Printf("Failed to copy workflow from runner %s/%s: %s", r.ObjectMeta.Namespace, r.ObjectMeta.Name, err.Error())
 			purgeOld = false
 		} else {
 			toCache = append(toCache, *wf)
@@ -186,17 +185,13 @@ func (c *Config) setupWatcher(k8sClient kubernetes.Interface, runnerClient runne
 }
 
 func workflowFromScaledActionRunner(ctx context.Context, client kubernetes.Interface, crd runnerv1alpha1.ScaledActionRunner) (*GithubWorkflowConfig, error) {
-	ns := crd.Spec.Namespace
-	if ns == "" {
-		ns = crd.ObjectMeta.Namespace
-	}
-
+	ns := crd.ObjectMeta.Namespace
 	secret, err := client.CoreV1().Secrets(ns).Get(ctx, crd.Spec.GithubTokenSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("Error reading secret %s in namespace %s. %s", crd.Spec.GithubTokenSecret, ns, err.Error())
 	}
 	return &GithubWorkflowConfig{
-		Name:       crd.Spec.Name,
+		Name:       crd.ObjectMeta.Name,
 		Namespace:  ns,
 		Token:      string(secret.Data["token"]),
 		Owner:      crd.Spec.Owner,

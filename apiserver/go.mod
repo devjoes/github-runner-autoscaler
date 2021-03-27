@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
-	github.com/devjoes/github-runner-autoscaler/operator v0.0.0-20210324165525-0bc42a29c36b // indirect
+	github.com/devjoes/github-runner-autoscaler/operator v0.0.0-20210327004402-259ff9b66e77 // indirect
 	github.com/golang/protobuf v1.5.1
 	github.com/google/go-github/v33 v33.0.0
 	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20210311094424-0ca2b1909cdc
