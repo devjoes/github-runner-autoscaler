@@ -23,7 +23,7 @@ func getLabels(name string) map[string]string {
 func UpdateScaledObjectSpec(c *runnerv1alpha1.ScaledActionRunner, url string, spec *keda.ScaledObjectSpec) {
 	spec.ScaleTargetRef = &keda.ScaleTarget{
 		Kind:       "StatefulSet",
-		Name:       c.Spec.Name,
+		Name:       c.ObjectMeta.Name,
 		APIVersion: "apps/v1",
 	}
 	spec.MinReplicaCount = &c.Spec.MinRunners
@@ -61,7 +61,7 @@ func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *ked
 	UpdateScaledObjectSpec(c, url, &spec)
 
 	resource := keda.ScaledObject{
-		ObjectMeta: metav1.ObjectMeta{Name: c.Spec.Name, Namespace: c.Spec.Namespace, Labels: ls},
+		ObjectMeta: metav1.ObjectMeta{Name: c.ObjectMeta.Name, Namespace: c.ObjectMeta.Namespace, Labels: ls},
 		Spec:       spec,
 	}
 	return &resource
@@ -74,8 +74,8 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 	}
 	resource := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        c.Spec.Name,
-			Namespace:   c.Spec.Namespace,
+			Name:        c.ObjectMeta.Name,
+			Namespace:   c.ObjectMeta.Namespace,
 			Labels:      ls,
 			Annotations: as,
 		},
@@ -141,7 +141,7 @@ func GetVolumes(c *runnerv1alpha1.ScaledActionRunner) ([]corev1.Volume, []corev1
 	}
 
 	for i := 0; i < int(c.Spec.MaxRunners); i++ {
-		name := fmt.Sprintf("%s-%d", c.Spec.Name, i)
+		name := fmt.Sprintf("%s-%d", c.ObjectMeta.Name, i)
 		if i >= len(c.Spec.RunnerSecrets) {
 			break
 		}

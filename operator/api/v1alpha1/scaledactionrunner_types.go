@@ -37,8 +37,6 @@ type ScaledActionRunnerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of ScaledActionRunner. Edit ScaledActionRunner_types.go to remove/update
-	Name              string   `json:"name"`                //TODO: Remove
-	Namespace         string   `json:"namespace,omitempty"` //TODO: Remove
 	MaxRunners        int32    `json:"maxRunners"`
 	MinRunners        int32    `json:"minRunners,omitempty"`
 	RunnerSecrets     []string `json:"runnerSecrets"`
@@ -69,18 +67,18 @@ const (
 func Validate(ctx context.Context, sr *ScaledActionRunner, c client.Client) error {
 	s := corev1.Secret{}
 	checkSecret := func(ctx context.Context, c client.Client, name string, namespace string) error {
-		if err := c.Get(ctx, types.NamespacedName{Namespace: sr.Spec.Namespace, Name: sr.Spec.GithubTokenSecret}, &s); err != nil {
+		if err := c.Get(ctx, types.NamespacedName{Namespace: sr.ObjectMeta.Namespace, Name: sr.Spec.GithubTokenSecret}, &s); err != nil {
 			return fmt.Errorf("Could not find secret %s in namespace %s. %s", name, namespace, err.Error())
 		}
 		return nil
 	}
-	if err := checkSecret(ctx, c, sr.Spec.Namespace, sr.Spec.GithubTokenSecret); err != nil {
+	if err := checkSecret(ctx, c, sr.ObjectMeta.Namespace, sr.Spec.GithubTokenSecret); err != nil {
 		return err
 	}
 
 	for i := int32(0); i < sr.Spec.MaxRunners; i++ {
-		name := fmt.Sprintf("%s-%d", sr.Spec.Name, i)
-		if err := checkSecret(ctx, c, sr.Spec.Namespace, name); err != nil {
+		name := fmt.Sprintf("%s-%d", sr.ObjectMeta.Name, i)
+		if err := checkSecret(ctx, c, sr.ObjectMeta.Namespace, name); err != nil {
 			return err
 		}
 	}
@@ -93,9 +91,6 @@ func Setup(sr *ScaledActionRunner, crNamespace string) {
 
 	if status.ReferencedSecrets == nil {
 		status.ReferencedSecrets = make(map[string]string)
-	}
-	if spec.Namespace == "" {
-		spec.Namespace = crNamespace
 	}
 
 	if spec.Runner == nil {

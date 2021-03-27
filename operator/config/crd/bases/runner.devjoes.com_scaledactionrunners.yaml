@@ -40,17 +40,13 @@ spec:
               githubTokenSecret:
                 type: string
               maxRunners:
+                description: Foo is an example field of ScaledActionRunner. Edit ScaledActionRunner_types.go
+                  to remove/update
                 format: int32
                 type: integer
               minRunners:
                 format: int32
                 type: integer
-              name:
-                description: Foo is an example field of ScaledActionRunner. Edit ScaledActionRunner_types.go
-                  to remove/update
-                type: string
-              namespace:
-                type: string
               owner:
                 type: string
               repo:
@@ -322,7 +318,6 @@ spec:
             required:
             - githubTokenSecret
             - maxRunners
-            - name
             - owner
             - repo
             - runnerSecrets

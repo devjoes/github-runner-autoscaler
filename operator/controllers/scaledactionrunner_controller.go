@@ -139,10 +139,10 @@ func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context
 func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log logr.Logger, config *runnerv1alpha1.ScaledActionRunner) (bool, error) {
 	//TODO: make these configurable
 	metricsEndpoint := "external-metrics-apiserver.runners.svc.cluster.local"
-	metricsUrl := fmt.Sprintf("https://%s/apis/external.metrics.k8s.io/v1beta1/namespaces/%s/%s", metricsEndpoint, config.Spec.Namespace, config.Spec.Name)
+	metricsUrl := fmt.Sprintf("https://%s/apis/external.metrics.k8s.io/v1beta1/namespaces/%s/%s", metricsEndpoint, config.ObjectMeta.Namespace, config.ObjectMeta.Name)
 
 	var so keda.ScaledObject
-	err := r.Get(ctx, types.NamespacedName{Name: config.Spec.Name, Namespace: config.Spec.Namespace}, &so)
+	err := r.Get(ctx, types.NamespacedName{Name: config.ObjectMeta.Name, Namespace: config.ObjectMeta.Namespace}, &so)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			so = *generators.GenerateScaledObject(config, metricsUrl)
@@ -179,12 +179,12 @@ func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log
 
 func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv1alpha1.ScaledActionRunner, metricsUrl string) bool {
 	updated := false
-	if found.ObjectMeta.Name != config.Spec.Name {
-		found.ObjectMeta.Name = config.Spec.Name
+	if found.ObjectMeta.Name != config.ObjectMeta.Name {
+		found.ObjectMeta.Name = config.ObjectMeta.Name
 		updated = true
 	}
-	if found.ObjectMeta.Namespace != config.Spec.Namespace {
-		found.ObjectMeta.Namespace = config.Spec.Namespace
+	if found.ObjectMeta.Namespace != config.ObjectMeta.Namespace {
+		found.ObjectMeta.Namespace = config.ObjectMeta.Namespace
 		updated = true
 	}
 	spec := found.Spec
@@ -209,8 +209,8 @@ func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv
 		so := generators.GenerateScaledObject(config, metricsUrl)
 		spec = so.Spec
 	}
-	if spec.ScaleTargetRef.Name != config.Spec.Name {
-		spec.ScaleTargetRef.Name = config.Spec.Name
+	if spec.ScaleTargetRef.Name != config.ObjectMeta.Name {
+		spec.ScaleTargetRef.Name = config.ObjectMeta.Name
 	}
 
 	if metricsUrl != spec.Triggers[0].Metadata["url"] {
@@ -229,7 +229,7 @@ func (r *ScaledActionRunnerReconciler) getSecretsHash(ctx context.Context, c *ru
 	getHash := func(secName string) ([]byte, error) {
 		var secret corev1.Secret
 		nsName := types.NamespacedName{
-			Namespace: c.Spec.Namespace,
+			Namespace: c.ObjectMeta.Namespace,
 			Name:      secName,
 		}
 		if err := r.Get(ctx, nsName, &secret); err != nil {
@@ -279,7 +279,7 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 
 	newSs := generators.GenerateStatefulSet(config, secretsHash)
 	existingSs := &appsv1.StatefulSet{}
-	err = r.Get(ctx, types.NamespacedName{Name: config.Spec.Name, Namespace: config.Spec.Namespace}, existingSs)
+	err = r.Get(ctx, types.NamespacedName{Name: config.ObjectMeta.Name, Namespace: config.ObjectMeta.Namespace}, existingSs)
 
 	if err != nil && errors.IsNotFound(err) {
 		(resourceLog(log, "Creating a new StatefulSet %s", newSs))
@@ -292,13 +292,13 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 		// StatefulSet created successfully - return and requeue
 		return true, nil
 	} else if err != nil {
-		log.Error(err, "Failed to get StatefulSet "+config.Spec.Name)
+		log.Error(err, "Failed to get StatefulSet "+config.ObjectMeta.Name)
 		return false, err
 	}
 
 	updatedSs := getScaledSetUpdates(existingSs, config, secretsHash)
 	if updatedSs != nil {
-		resourceLog(log, "Deleting StatefulSet to be recreated on next reconcile %s", updatedSs)
+		resourceLog(log, "Deleting and recreating StatefulSet %s", updatedSs)
 		changes, err := diff.Diff(existingSs, updatedSs)
 		if err != nil {
 			log.Error(err, "errored whilst diffing objects")
@@ -311,12 +311,13 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 			log.Error(err, "Failed to delete StatefulSet "+existingSs.Name)
 		}
 		deleted := false
-		secs := 0
-		for !deleted && secs < 60 {
-			secs++
+		iterations := 0
+		for !deleted && iterations < 60 {
+			iterations++
 			deleted = r.Client.Get(ctx, key, &appsv1.StatefulSet{}) != nil
-			time.Sleep(time.Second)
+			time.Sleep(time.Millisecond * 25)
 		}
+		updatedSs.ResourceVersion = "0x0"
 		err = r.Create(ctx, updatedSs)
 		if err != nil {
 			log.Error(err, "Failed to create StatefulSet "+updatedSs.Name)
@@ -329,12 +330,12 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 	updatedSs := oldSs.DeepCopyObject().(*appsv1.StatefulSet)
 	updated := false
 
-	if updatedSs.ObjectMeta.Name != config.Spec.Name {
-		updatedSs.ObjectMeta.Name = config.Spec.Name
+	if updatedSs.ObjectMeta.Name != config.ObjectMeta.Name {
+		updatedSs.ObjectMeta.Name = config.ObjectMeta.Name
 		updated = true
 	}
-	if updatedSs.ObjectMeta.Namespace != config.Spec.Namespace {
-		updatedSs.ObjectMeta.Namespace = config.Spec.Namespace
+	if updatedSs.ObjectMeta.Namespace != config.ObjectMeta.Namespace {
+		updatedSs.ObjectMeta.Namespace = config.ObjectMeta.Namespace
 		updated = true
 	}
 	if updatedSs.ObjectMeta.Annotations == nil {
@@ -350,13 +351,19 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 	}
 
 	if len(updatedSs.Spec.VolumeClaimTemplates) == 0 || !reflect.DeepEqual(updatedSs.Spec.VolumeClaimTemplates[0].Spec, *config.Spec.Runner.WorkVolumeClaimTemplate) {
-		updatedSs.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
-			{
-				Spec:   *config.Spec.Runner.WorkVolumeClaimTemplate,
-				Status: corev1.PersistentVolumeClaimStatus{},
-			},
+		var filesystem corev1.PersistentVolumeMode = "Filesystem"
+		updatedSs.Spec.VolumeClaimTemplates[0].Spec.VolumeMode = &filesystem
+		if !reflect.DeepEqual(updatedSs.Spec.VolumeClaimTemplates[0].Spec, *config.Spec.Runner.WorkVolumeClaimTemplate) {
+			updatedSs.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+				corev1.PersistentVolumeClaim{
+					ObjectMeta: updatedSs.Spec.VolumeClaimTemplates[0].ObjectMeta,
+					Spec:       *config.Spec.Runner.WorkVolumeClaimTemplate,
+					Status:     corev1.PersistentVolumeClaimStatus{},
+				},
+			}
+
+			updated = true
 		}
-		updated = true
 	}
 
 	updated = generators.SetEnvVars(config, updatedSs) || updated
