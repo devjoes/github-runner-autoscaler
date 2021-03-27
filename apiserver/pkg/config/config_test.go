@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/runnerclient"
+	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,12 +38,10 @@ func TestErrorsOnInvalidArgs(t *testing.T) {
 }
 
 const (
-	namespace    = "namespace"
-	name         = "name"
-	wfName       = "wfName"
+	namespace    = "wfNamespace"
+	name         = "wfName"
 	wfOwner      = "wfOwner"
 	wfRepo       = "wfRepo"
-	wfNamespace  = "wfNamespace"
 	wfSecretName = "wfSecretName"
 	wfToken      = "wfToken"
 	foo          = "foo"
@@ -60,8 +58,6 @@ var runner runnerv1alpha1.ScaledActionRunner = runnerv1alpha1.ScaledActionRunner
 	},
 	TypeMeta: metav1.TypeMeta{Kind: "ScaledActionRunner"},
 	Spec: runnerv1alpha1.ScaledActionRunnerSpec{
-		Name:              wfName,
-		Namespace:         wfNamespace,
 		Owner:             wfOwner,
 		Repo:              wfRepo,
 		GithubTokenSecret: wfSecretName,
@@ -72,7 +68,7 @@ func setup() {
 	secret = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      wfSecretName,
-			Namespace: wfNamespace,
+			Namespace: namespace,
 		},
 		Data: map[string][]byte{
 			"token": []byte(wfToken),
@@ -80,7 +76,8 @@ func setup() {
 	}
 	fakeclient = fake.NewSimpleClientset(&secret)
 
-	fakeRunnerClient, fakeRunnerClientWatch = runnerclient.NewFakeRunnersV1Alpha1Client([]runnerv1alpha1.ScaledActionRunner{runner})
+	fakeRunnerClient, fakeRunnerClientWatch = runnerclient.NewFakeRunnersV1Alpha1Client(
+		[]runnerv1alpha1.ScaledActionRunner{runner})
 }
 
 func TestLoadsWorkflowFromRunners(t *testing.T) {
@@ -89,8 +86,6 @@ func TestLoadsWorkflowFromRunners(t *testing.T) {
 	assert.Nil(t, err)
 	wfs := config.GetAllWorkflows()
 	assert.Len(t, wfs, 1)
-	assert.Equal(t, wfName, wfs[0].Name)
-	assert.Equal(t, wfNamespace, wfs[0].Namespace)
 	assert.Equal(t, wfToken, wfs[0].Token)
 	assert.Equal(t, wfOwner, wfs[0].Owner)
 	assert.Equal(t, wfRepo, wfs[0].Repository)
@@ -100,12 +95,12 @@ func TestGetsWorkflowByName(t *testing.T) {
 	setup()
 	config, err := createConfig(namespace, false, "", false, time.Hour, fakeclient, fakeRunnerClient)
 	assert.Nil(t, err)
-	key := wfName
+	key := name
 	wf, err := config.GetWorkflow(key)
 	assert.Nil(t, err)
 	assert.NotNil(t, wf)
-	assert.Equal(t, wfName, wf.Name)
-	assert.Equal(t, wfNamespace, wf.Namespace)
+	assert.Equal(t, name, wf.Name)
+	assert.Equal(t, namespace, wf.Namespace)
 	assert.Equal(t, wfToken, wf.Token)
 	assert.Equal(t, wfOwner, wf.Owner)
 	assert.Equal(t, wfRepo, wf.Repository)
@@ -117,7 +112,7 @@ func TestReSyncsWorkflowFromRunners(t *testing.T) {
 	assert.Nil(t, err)
 	wfs := config.GetAllWorkflows()
 
-	(*fakeRunnerClient.Runners)[0].Spec.Name = foo
+	(*fakeRunnerClient.Runners)[0].ObjectMeta.Name = foo
 	secret.Data["token"] = []byte(foo)
 	fakeclient.CoreV1().Secrets(secret.Namespace).Update(context.TODO(), &secret, metav1.UpdateOptions{})
 	assert.NotEqual(t, foo, wfs[0].Name)

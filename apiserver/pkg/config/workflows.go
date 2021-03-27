@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	runnerclient "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/runnerclient"
+	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
@@ -186,6 +186,8 @@ func (c *Config) setupWatcher(k8sClient kubernetes.Interface, runnerClient runne
 
 func workflowFromScaledActionRunner(ctx context.Context, client kubernetes.Interface, crd runnerv1alpha1.ScaledActionRunner) (*GithubWorkflowConfig, error) {
 	ns := crd.ObjectMeta.Namespace
+	a, _ := client.CoreV1().Secrets("ns").List(ctx, metav1.ListOptions{})
+	fmt.Println(a)
 	secret, err := client.CoreV1().Secrets(ns).Get(ctx, crd.Spec.GithubTokenSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("Error reading secret %s in namespace %s. %s", crd.Spec.GithubTokenSecret, ns, err.Error())
