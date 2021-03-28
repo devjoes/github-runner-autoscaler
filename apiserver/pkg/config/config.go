@@ -10,6 +10,7 @@ import (
 	"time"
 
 	runnerClient "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/runnerclient"
+	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/scaling"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	cache "k8s.io/client-go/tools/cache"
@@ -44,11 +45,12 @@ type Config struct {
 }
 
 type GithubWorkflowConfig struct {
-	Name       string `json:"name"`
-	Namespace  string `json:"namespace"`
-	Token      string `json:"token"`
-	Owner      string `json:"owner"`
-	Repository string `json:"repository"`
+	Name       string          `json:"name"`
+	Namespace  string          `json:"namespace"`
+	Token      string          `json:"token"`
+	Owner      string          `json:"owner"`
+	Repository string          `json:"repository"`
+	Scaling    scaling.Scaling `json:"scaling"`
 }
 
 type IWorkflowSource interface {

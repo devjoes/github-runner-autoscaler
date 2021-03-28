@@ -29,7 +29,7 @@ func (h *Host) GetAllMetricNames() ([]string, error) {
 
 const MetricErrNotFound string = "metric not found"
 
-func (h *Host) QueryMetric(key string) (int, *config.GithubWorkflowConfig, error) {
+func (h *Host) QueryMetric(key string) (int32, *config.GithubWorkflowConfig, error) {
 	wf, err := h.config.GetWorkflow(key)
 	if err != nil {
 		return 0, nil, err
@@ -39,7 +39,7 @@ func (h *Host) QueryMetric(key string) (int, *config.GithubWorkflowConfig, error
 	}
 	client := h.getClient(wf)
 	length, err := client.GetQueueLength(context.Background()) //TODO: context
-	return length, wf, err
+	return int32(length), wf, err
 }
 
 func (h *Host) getClient(wf *config.GithubWorkflowConfig) client.Client {

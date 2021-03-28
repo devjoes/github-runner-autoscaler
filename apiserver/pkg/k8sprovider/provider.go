@@ -57,6 +57,7 @@ func (p *workflowQueueProvider) GetExternalMetric(namespace string, metricSelect
 		fmt.Println(err.Error())
 		return nil, errors.NewBadRequest("Error getting metric")
 	}
+	value = wfInfo.Scaling.GetOutput(value)
 	matchingMetrics = append(matchingMetrics, external_metrics.ExternalMetricValue{
 		MetricName: name,
 		MetricLabels: map[string]string{

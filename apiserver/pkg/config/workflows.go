@@ -8,6 +8,7 @@ import (
 	"time"
 
 	runnerclient "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/runnerclient"
+	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/scaling"
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -192,11 +193,17 @@ func workflowFromScaledActionRunner(ctx context.Context, client kubernetes.Inter
 	if err != nil {
 		return nil, fmt.Errorf("Error reading secret %s in namespace %s. %s", crd.Spec.GithubTokenSecret, ns, err.Error())
 	}
+	if crd.Spec.ScaleFactor == nil {
+		one := "1"
+		crd.Spec.ScaleFactor = &one
+	}
+
 	return &GithubWorkflowConfig{
 		Name:       crd.ObjectMeta.Name,
 		Namespace:  ns,
 		Token:      string(secret.Data["token"]),
 		Owner:      crd.Spec.Owner,
 		Repository: crd.Spec.Repo,
+		Scaling:    scaling.NewScaling(&crd),
 	}, nil
 }
