@@ -5,6 +5,8 @@ import (
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/host"
 	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,6 +60,8 @@ func (p *workflowQueueProvider) GetExternalMetric(namespace string, metricSelect
 		return nil, errors.NewBadRequest("Error getting metric")
 	}
 	value = wfInfo.Scaling.GetOutput(value)
+	defer guageRequestedRunners.WithLabelValues(name).Set(float64(value))
+
 	matchingMetrics = append(matchingMetrics, external_metrics.ExternalMetricValue{
 		MetricName: name,
 		MetricLabels: map[string]string{
@@ -83,4 +87,15 @@ func (p *workflowQueueProvider) ListAllExternalMetrics() []provider.ExternalMetr
 		externalMetricsInfo = append(externalMetricsInfo, provider.ExternalMetricInfo{Metric: name})
 	}
 	return externalMetricsInfo
+}
+
+var guageRequestedRunners *prometheus.GaugeVec
+
+func init() {
+	labelNames := []string{"name"}
+	guageRequestedRunners = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "workflow_requested_runners",
+		Help: "Number of runners requested",
+	}, labelNames)
+
 }
