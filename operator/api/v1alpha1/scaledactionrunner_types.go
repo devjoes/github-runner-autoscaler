@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
@@ -44,7 +45,7 @@ type ScaledActionRunnerSpec struct {
 	Owner             string   `json:"owner"`
 	Repo              string   `json:"repo"`
 	Scaling           *Scaling `json:"scaling,omitempty"`
-	ScaleFactor       *float64 `json:"scaleFactor,omitempty"`
+	ScaleFactor       *string  `json:"scaleFactor,omitempty"`
 	Runner            *Runner  `json:"runner,omitempty"`
 }
 
@@ -84,6 +85,10 @@ func Validate(ctx context.Context, sr *ScaledActionRunner, c client.Client) erro
 		if err := checkSecret(ctx, c, sr.ObjectMeta.Namespace, name); err != nil {
 			return err
 		}
+	}
+	_, err := strconv.ParseFloat(*sr.Spec.ScaleFactor, 64)
+	if err != nil {
+		return fmt.Errorf("Could not parse %s as a float64", *sr.Spec.ScaleFactor)
 	}
 	return nil
 }
@@ -127,8 +132,8 @@ func Setup(sr *ScaledActionRunner, crNamespace string) {
 		}
 	}
 	if spec.ScaleFactor == nil {
-		var sf float64 = 1
-		spec.ScaleFactor = &sf
+		one := "1"
+		spec.ScaleFactor = &one
 	}
 
 }

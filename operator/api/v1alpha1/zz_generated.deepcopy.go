@@ -141,6 +141,11 @@ func (in *ScaledActionRunnerSpec) DeepCopyInto(out *ScaledActionRunnerSpec) {
 		*out = new(Scaling)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ScaleFactor != nil {
+		in, out := &in.ScaleFactor, &out.ScaleFactor
+		*out = new(string)
+		**out = **in
+	}
 	if in.Runner != nil {
 		in, out := &in.Runner, &out.Runner
 		*out = new(Runner)

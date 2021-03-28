@@ -203,6 +203,8 @@ spec:
                 items:
                   type: string
                 type: array
+              scaleFactor:
+                type: string
               scaling:
                 properties:
                   behavior:
