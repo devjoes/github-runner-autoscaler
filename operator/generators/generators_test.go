@@ -1,6 +1,7 @@
 package generators
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
@@ -9,7 +10,28 @@ import (
 )
 
 func TestCreatesScaledObject(t *testing.T) {
-	co := GenerateScaledObject(&v1alpha1.ScaledActionRunner{
+	a := ArmGenerateDeployment(&v1alpha1.ActionRunnerMetrics{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "a",
+			Namespace: "b",
+		},
+		Spec: v1alpha1.ActionRunnerMetricsSpec{
+			Image:                       "a",
+			CreateMemcached:             true,
+			Replicas:                    3,
+			ExistingMemcacheUser:        "a",
+			ExistingMemcacheCredsSecret: "b",
+			CacheWindow:                 123,
+			CacheWindowWhenEmpty:        234,
+			ResyncInterval:              345,
+			ExistingMemcacheServers:     "foo",
+			MemcachedReplicas:           3,
+			ExistingSslCertSecret:       "cert",
+			Namespaces:                  []string{"a", "b"},
+		},
+	})
+	fmt.Println(a)
+	co := SarGenerateScaledObject(&v1alpha1.ScaledActionRunner{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "Foo",
 			Namespace: "Bar",

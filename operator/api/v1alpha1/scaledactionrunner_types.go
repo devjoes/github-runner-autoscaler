@@ -132,8 +132,8 @@ func Setup(sr *ScaledActionRunner, crNamespace string) {
 		}
 	}
 	if spec.ScaleFactor == nil {
-		one := "1"
-		spec.ScaleFactor = &one
+		sf := "0.5"
+		spec.ScaleFactor = &sf
 	}
 
 }

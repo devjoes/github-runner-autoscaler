@@ -7,20 +7,29 @@ import (
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
 
 	keda "github.com/kedacore/keda/v2/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 const AnnotationRunnerRef = "runner-ref"
 const AnnotationSecretsHash = "runner-secrets-hash"
 
-func getLabels(name string) map[string]string {
-	return map[string]string{"app": "github_runner", "github_runner_cr": name}
+func getLabels(res metav1.Object) map[string]string {
+	ls := res.GetLabels()
+	if ls == nil {
+		ls = map[string]string{}
+	}
+	ls["product"] = "github_actions_operator"
+	return ls
 }
 
 //TODO: Take this approach for StatefulSets too
-func UpdateScaledObjectSpec(c *runnerv1alpha1.ScaledActionRunner, url string, spec *keda.ScaledObjectSpec) {
+func SarUpdateScaledObjectSpec(c *runnerv1alpha1.ScaledActionRunner, url string, spec *keda.ScaledObjectSpec) {
 	spec.ScaleTargetRef = &keda.ScaleTarget{
 		Kind:       "StatefulSet",
 		Name:       c.ObjectMeta.Name,
@@ -55,10 +64,10 @@ func UpdateScaledObjectSpec(c *runnerv1alpha1.ScaledActionRunner, url string, sp
 	}
 }
 
-func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *keda.ScaledObject {
-	ls := getLabels(c.Name)
+func SarGenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *keda.ScaledObject {
+	ls := getLabels(c)
 	spec := keda.ScaledObjectSpec{}
-	UpdateScaledObjectSpec(c, url, &spec)
+	SarUpdateScaledObjectSpec(c, url, &spec)
 
 	resource := keda.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{Name: c.ObjectMeta.Name, Namespace: c.ObjectMeta.Namespace, Labels: ls},
@@ -67,8 +76,9 @@ func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *ked
 	return &resource
 }
 
-func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash string) *appsv1.StatefulSet {
-	ls := getLabels(c.Name)
+func SarGenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash string) *appsv1.StatefulSet {
+	ls := getLabels(c)
+	ls["app"] = "action-runner"
 	as := map[string]string{
 		AnnotationSecretsHash: secretsHash,
 	}
@@ -107,16 +117,16 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 			},
 		},
 	}
-	SetEnvVars(c, &resource)
+	SarSetEnvVars(c, &resource)
 
-	volumes, volumeMounts := GetVolumes(c)
+	volumes, volumeMounts := SarGetVolumes(c)
 	resource.Spec.Template.Spec.Volumes = volumes
 	resource.Spec.Template.Spec.Containers[0].VolumeMounts = volumeMounts
 
 	return &resource
 }
 
-func GetVolumes(c *runnerv1alpha1.ScaledActionRunner) ([]corev1.Volume, []corev1.VolumeMount) {
+func SarGetVolumes(c *runnerv1alpha1.ScaledActionRunner) ([]corev1.Volume, []corev1.VolumeMount) {
 	emptyString := ""
 	var volumes []corev1.Volume = []corev1.Volume{
 		{
@@ -168,7 +178,7 @@ func GetVolumes(c *runnerv1alpha1.ScaledActionRunner) ([]corev1.Volume, []corev1
 	return volumes, volumeMounts
 }
 
-func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.StatefulSet) bool {
+func SarSetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.StatefulSet) bool {
 	modified := false
 	toSet := map[string]corev1.EnvVar{
 		"REPO_URL": {
@@ -205,4 +215,203 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 		statefulSet.Spec.Template.Spec.Containers[0].Env = append(statefulSet.Spec.Template.Spec.Containers[0].Env, e)
 	}
 	return modified
+}
+
+func ArmGenerateExternalMetrics(c *runnerv1alpha1.ActionRunnerMetrics) (*appsv1.Deployment, *v1.Service, *v1.ServiceAccount, []rbac.ClusterRole, []rbac.ClusterRoleBinding) {
+	ls := getLabels(c)
+	ls["app"] = "external-metrics-apiserver"
+	jsonRes := `{
+		"apiVersion": "apps/v1",
+		"kind": "Deployment",
+		"metadata": {
+			"labels": {
+				"app": "external-metrics-apiserver"
+			},
+			"name": "external-metrics-apiserver",
+			"namespace": "runners"
+		},
+		"spec": {
+			"replicas": 2,
+			"selector": {
+				"matchLabels": {
+					"app": "external-metrics-apiserver"
+				}
+			},
+			"template": {
+				"metadata": {
+					"labels": {
+						"app": "external-metrics-apiserver"
+					},
+					"name": "external-metrics-apiserver"
+				},
+				"spec": {
+					"containers": [
+						{
+							"args": [
+								"--secure-port=6443",
+								"--logtostderr=true",
+								"--incluster",
+								"--tls-cert-file=/apiserver.local.config/certificates/cert",
+								"--tls-private-key-file=/apiserver.local.config/certificates/key"
+							],
+							"image": "joeshearn/github-runner-autoscaler-apiserver:000021",
+							"imagePullPolicy": "IfNotPresent",
+							"name": "external-metrics-apiserver",
+							"ports": [
+								{
+									"containerPort": 6443,
+									"name": "https",
+									"protocol": "TCP"
+								},
+								{
+									"containerPort": 2112,
+									"name": "metrics",
+									"protocol": "TCP"
+								}
+							],
+							"env": [
+								{
+									"name": "MEMCACHEDPASS",
+									"valueFrom": {
+										"secretKeyRef": {
+											"name": "memcache",
+											"key": "password"
+										}
+									}
+								}
+							],
+							"resources": {},
+							"terminationMessagePath": "/dev/termination-log",
+							"terminationMessagePolicy": "File",
+							"volumeMounts": [
+								{
+									"mountPath": "/tmp",
+									"name": "temp-vol"
+								},
+								{
+									"mountPath": "/apiserver.local.config/certificates",
+									"name": "cert",
+									"readOnly": true
+								}
+							]
+						}
+					],
+					"dnsPolicy": "ClusterFirst",
+					"restartPolicy": "Always",
+					"schedulerName": "default-scheduler",
+					"securityContext": {},
+					"serviceAccount": "external-metrics-apiserver",
+					"serviceAccountName": "external-metrics-apiserver",
+					"terminationGracePeriodSeconds": 30,
+					"volumes": [
+						{
+							"emptyDir": {},
+							"name": "temp-vol"
+						},
+						{
+							"name": "cert",
+							"secret": {
+								"defaultMode": 420,
+								"secretName": "cert"
+							}
+						}
+					]
+				}
+			}
+		}
+	}`
+	var dep appsv1.Deployment
+	err := yaml.Unmarshal([]byte(jsonRes), &dep)
+	if err != nil {
+		fmt.Println(err)
+	}
+	dep.Name = c.Name
+	dep.Spec.Template.Name = c.Name
+	dep.Labels = ls
+	dep.Spec.Template.Labels = ls
+	dep.Spec.Selector.MatchLabels = ls
+
+	dep.Namespace = c.ObjectMeta.Namespace
+	dep.Spec.Replicas = &c.Spec.Replicas
+	dep.Spec.Template.Spec.Containers[0].Image = c.Spec.Image
+
+	var args []string
+	if len(c.Spec.Namespaces) == 0 {
+		args = append(args, "--allnamespaces")
+	}
+	for _, n := range c.Spec.Namespaces {
+		args = append(args, "--namespace='%s'", n)
+	}
+
+	mcServers := ""
+	if c.Spec.CreateMemcached {
+		for i := 1; i <= int(c.Spec.MemcachedReplicas); i++ {
+			mcServers = fmt.Sprintf("%s%s-cache-%d:11211", mcServers, c.Name, i)
+			if i < int(c.Spec.MemcachedReplicas) {
+				mcServers = fmt.Sprintf("%s,", mcServers)
+			}
+		}
+	}
+	if c.Spec.ExistingMemcacheServers != "" {
+		mcServers = c.Spec.ExistingMemcacheServers
+	}
+	if mcServers != "" {
+		args = append(args, fmt.Sprintf("--memcached-servers='%s'", mcServers))
+	}
+	dep.Spec.Template.Spec.Containers[0].Args = append(dep.Spec.Template.Spec.Containers[0].Args, args...)
+	dep.Spec.Template.Spec.ServiceAccountName = c.Name
+	dep.Spec.Template.Spec.Volumes[1].Secret.SecretName = fmt.Sprintf("%s-cert", c.Name)
+	if c.Spec.ExistingSslCertSecret != "" {
+		dep.Spec.Template.Spec.Volumes[1].Secret.SecretName = c.Spec.ExistingSslCertSecret
+	}
+
+	dep.Spec.Template.Spec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = fmt.Sprintf("%s-cache", c.Name)
+	if c.Spec.ExistingMemcacheCredsSecret != "" {
+		dep.Spec.Template.Spec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = c.Spec.ExistingMemcacheCredsSecret
+	} else if !c.Spec.CreateMemcached {
+		dep.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}
+	}
+	svc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      c.Name,
+			Namespace: c.Namespace,
+			Labels:    c.Labels,
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				v1.ServicePort{
+					Name:       "https",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       443,
+					TargetPort: intstr.FromInt(6443),
+				},
+				v1.ServicePort{
+					Name:       "metrics",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       2112,
+					TargetPort: intstr.FromInt(2112),
+				},
+			},
+			Selector: map[string]string{
+				"app": c.Name,
+			},
+		},
+	}
+	sa := v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      c.Name,
+			Namespace: c.Namespace,
+			Labels:    c.Labels,
+		},
+	}
+	r1:=rbac.ClusterRole
+	rb1 := rbac.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      c.Name,
+			Namespace: c.Namespace,
+			Labels:    c.Labels,
+		},
+		RoleRef: ,
+	}
+	return &dep, &svc, &sa, nil, nil
 }

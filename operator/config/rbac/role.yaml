@@ -47,6 +47,32 @@ rules:
 - apiGroups:
   - runner.devjoes.com
   resources:
+  - actionrunnermetrics
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - runner.devjoes.com
+  resources:
+  - actionrunnermetrics/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - runner.devjoes.com
+  resources:
+  - actionrunnermetrics/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - runner.devjoes.com
+  resources:
   - scaledactionrunners
   verbs:
   - create

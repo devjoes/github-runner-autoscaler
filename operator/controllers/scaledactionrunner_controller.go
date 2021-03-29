@@ -145,7 +145,7 @@ func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log
 	err := r.Get(ctx, types.NamespacedName{Name: config.ObjectMeta.Name, Namespace: config.ObjectMeta.Namespace}, &so)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			so = *generators.GenerateScaledObject(config, metricsUrl)
+			so = *generators.SarGenerateScaledObject(config, metricsUrl)
 			(resourceLog(log, "Creating a new %s", &so))
 			ctrl.SetControllerReference(config, &so, r.Scheme)
 			err = r.Create(ctx, &so)
@@ -206,7 +206,7 @@ func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv
 		spec.MaxReplicaCount = &config.Spec.MaxRunners
 	}
 	if spec.ScaleTargetRef == nil || spec.Triggers == nil || len(spec.Triggers) == 0 {
-		so := generators.GenerateScaledObject(config, metricsUrl)
+		so := generators.SarGenerateScaledObject(config, metricsUrl)
 		spec = so.Spec
 	}
 	if spec.ScaleTargetRef.Name != config.ObjectMeta.Name {
@@ -277,7 +277,7 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 		return false, fmt.Errorf("Failed to get secrets %s", err.Error())
 	}
 
-	newSs := generators.GenerateStatefulSet(config, secretsHash)
+	newSs := generators.SarGenerateStatefulSet(config, secretsHash)
 	existingSs := &appsv1.StatefulSet{}
 	err = r.Get(ctx, types.NamespacedName{Name: config.ObjectMeta.Name, Namespace: config.ObjectMeta.Namespace}, existingSs)
 
@@ -366,8 +366,8 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 		}
 	}
 
-	updated = generators.SetEnvVars(config, updatedSs) || updated
-	volumes, volumeMounts := generators.GetVolumes(config)
+	updated = generators.SarSetEnvVars(config, updatedSs) || updated
+	volumes, volumeMounts := generators.SarGetVolumes(config)
 	if !reflect.DeepEqual(volumes, oldSs.Spec.Template.Spec.Volumes) {
 		updatedSs.Spec.Template.Spec.Volumes = volumes
 		updated = true
