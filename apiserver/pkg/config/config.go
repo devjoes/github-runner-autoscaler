@@ -3,11 +3,12 @@ package config
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/namsral/flag"
 
 	runnerClient "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/runnerclient"
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/scaling"
@@ -26,13 +27,18 @@ type Config struct {
 	CacheWindow          time.Duration `json:"cacheWindow"`
 	CacheWindowWhenEmpty time.Duration `json:"cacheWindowWhenEmpty"`
 	ResyncInterval       time.Duration `json:"resyncInterval"`
-	MemcachedServers     []string      `json:"memcachedServers"`
-	AllNs                bool          `json:"allNs"`
-	InClusterConfig      bool          `json:"inClusterConfig"`
-	Kubeconfig           string        `json:"kubeconfig"`
-	RunnerNSs            []string      `json:"runnerNSs"`
+	MemcachedServers     string        `json:"memcachedServers"`
+	MemcachedUser        string        `json:"memcachedUser"`
+	MemcachedPass        string        `json:"memcachedPass"`
 
-	flagMemcachedServers     *ArrayFlags
+	AllNs           bool     `json:"allNs"`
+	InClusterConfig bool     `json:"inClusterConfig"`
+	Kubeconfig      string   `json:"kubeconfig"`
+	RunnerNSs       []string `json:"runnerNSs"`
+
+	flagMemcachedServers     *string
+	flagMemcachedUser        *string
+	flagMemcachedPass        *string
 	flagCacheWindow          *string
 	flagCacheWindowWhenEmpty *string
 	flagResyncIntervalStr    *string
@@ -98,7 +104,6 @@ func (i *ArrayFlags) Set(value string) error {
 }
 func (c *Config) AddFlags() {
 	c.flagRunnerNSs = &ArrayFlags{}
-	c.flagMemcachedServers = &ArrayFlags{}
 	flag.Var(c.flagRunnerNSs, "namespace", "Namespace to find secrets in, can be specified multiple times.")
 	c.flagAllNs = flag.Bool("allnamespaces", false, "Find secrets in all namespaces.")
 
@@ -112,7 +117,9 @@ func (c *Config) AddFlags() {
 	c.flagCacheWindow = flag.String("cache-window", "1m", "How long to cache queue lengths for")
 	c.flagCacheWindowWhenEmpty = flag.String("cache-windowwhen-empty", "30s", "How long to cache queue lengths for when all runners may be offline")
 	c.flagResyncIntervalStr = flag.String("resync-interval", "5m", "How often to fully reload all ScaledActionRunner CRDs")
-	flag.Var(c.flagMemcachedServers, "memcached-server", "Memcached servers to use. If unspecified a local in memory cache is used.")
+	c.flagMemcachedServers = flag.String("memcached-servers", "", "Memcached servers to use. If unspecified a local in memory cache is used.")
+	c.flagMemcachedUser = flag.String("memcached-user", "", "Memcached user to use.")
+	c.flagMemcachedPass = flag.String("memcached-password", "", "Memcached password to use.")
 }
 
 func validateArgs(runnerNSs []string, allNs bool) error {
@@ -143,11 +150,9 @@ func (c *Config) SetupConfig(params ...interface{}) error {
 	if c.flagRunnerNSs != nil && len((*c.flagRunnerNSs).String()) > 0 {
 		c.RunnerNSs = strings.Split((*c.flagRunnerNSs).String(), ",")
 	}
-	c.MemcachedServers = make([]string, 0)
-	if c.flagMemcachedServers != nil && len((*c.flagMemcachedServers).String()) > 0 {
-		c.MemcachedServers = strings.Split((*c.flagMemcachedServers).String(), ",")
-	}
-
+	c.MemcachedServers = *c.flagMemcachedServers
+	c.MemcachedUser = *c.flagMemcachedUser
+	c.MemcachedPass = *c.flagMemcachedPass
 	c.ResyncInterval = parseDuration(c.flagResyncIntervalStr, c.ResyncInterval)
 	c.CacheWindow = parseDuration(c.flagCacheWindow, c.CacheWindow)
 	c.CacheWindowWhenEmpty = parseDuration(c.flagCacheWindowWhenEmpty, c.CacheWindowWhenEmpty)

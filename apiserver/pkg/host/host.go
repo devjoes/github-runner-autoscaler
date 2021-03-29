@@ -63,7 +63,7 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 	var stateProvider state.IStateProvider
 	var err error
 	if len(conf.MemcachedServers) > 0 {
-		stateProvider, err = state.NewMemcachedStateProvider(conf.MemcachedServers)
+		stateProvider, err = state.NewMemcachedStateProvider(conf.MemcachedServers, conf.MemcachedUser, conf.MemcachedPass)
 		if err != nil {
 			return nil, err
 		}

@@ -5,23 +5,24 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bradfitz/gomemcache/memcache"
+	"github.com/memcachier/mc"
+	"google.golang.org/appengine/memcache"
 )
 
 type MemcachedStateProvider struct {
-	mc *memcache.Client
+	cache *mc.Client
 }
 
-func NewMemcachedStateProvider(servers []string) (*MemcachedStateProvider, error) {
-	mc := memcache.New(servers...)
-	return &MemcachedStateProvider{mc: mc}, nil
+func NewMemcachedStateProvider(servers string, username string, password string) (*MemcachedStateProvider, error) {
+	cache := mc.NewMC(servers, username, password)
+	return &MemcachedStateProvider{cache: cache}, nil
 }
 
 func (p *MemcachedStateProvider) GetState(key string) (*ClientState, error) {
-	s, err := p.mc.Get(key)
+	val, _, _, err := p.cache.Get(key)
 	if err == nil {
 		var state ClientState
-		err = json.Unmarshal(s.Value, &state)
+		err = json.Unmarshal([]byte(val), &state)
 		if err == nil {
 			return &state, nil
 		}
@@ -38,5 +39,6 @@ func (p *MemcachedStateProvider) SetState(key string, state *ClientState) error 
 	if err != nil {
 		return err
 	}
-	return p.mc.Set(&memcache.Item{Key: key, Value: data, Expiration: 60 * 60})
+	_, err = p.cache.Set(key, string(data), 0, 60*60, 0)
+	return err
 }
