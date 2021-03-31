@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/memcachier/mc"
-	"google.golang.org/appengine/memcache"
 )
 
 type MemcachedStateProvider struct {
@@ -15,6 +14,10 @@ type MemcachedStateProvider struct {
 
 func NewMemcachedStateProvider(servers string, username string, password string) (*MemcachedStateProvider, error) {
 	cache := mc.NewMC(servers, username, password)
+	_, err := cache.Set("ok", "ok", 0, 10, 0)
+	if err != nil {
+		return nil, fmt.Errorf("Could not connect to cache with '%s' '%s' '%s': %s", servers, username, password, err.Error())
+	}
 	return &MemcachedStateProvider{cache: cache}, nil
 }
 
@@ -27,7 +30,7 @@ func (p *MemcachedStateProvider) GetState(key string) (*ClientState, error) {
 			return &state, nil
 		}
 	}
-	if errors.Is(err, memcache.ErrCacheMiss) {
+	if errors.Is(err, mc.ErrNotFound) {
 		return NewClientState(key), nil
 	}
 	//TODO: Configurable

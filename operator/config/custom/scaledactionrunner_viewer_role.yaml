@@ -31,4 +31,3 @@ rules:
       - scaledactionrunners/status
     verbs:
       - get
-      - update

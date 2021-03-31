@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/config"
-	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/gitclient"
 	client "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/gitclient"
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/state"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 type Host struct {
@@ -27,19 +28,34 @@ func (h *Host) GetAllMetricNames() ([]string, error) {
 	return metrics, nil
 }
 
+func (h *Host) GetAllMetricLabels() []labels.Set {
+	wfs := h.config.GetAllWorkflows()
+	metricLabels := make([]labels.Set, len(wfs))
+	for _, wf := range wfs {
+		lbls := map[string]string{
+			"name":      wf.Name,
+			"namespace": wf.Namespace,
+			"repo":      wf.Repository,
+			"owner":     wf.Owner,
+		}
+		metricLabels = append(metricLabels, lbls)
+	}
+	return metricLabels
+}
+
 const MetricErrNotFound string = "metric not found"
 
-func (h *Host) QueryMetric(key string) (int32, *config.GithubWorkflowConfig, error) {
+func (h *Host) QueryMetric(key string) (map[int64]map[string]string, *config.GithubWorkflowConfig, error) {
 	wf, err := h.config.GetWorkflow(key)
 	if err != nil {
-		return 0, nil, err
+		return nil, nil, err
 	}
 	if wf == nil {
-		return 0, nil, errors.New(MetricErrNotFound)
+		return nil, nil, errors.New(MetricErrNotFound)
 	}
 	client := h.getClient(wf)
-	length, err := client.GetQueueLength(context.Background()) //TODO: context
-	return int32(length), wf, err
+	lengths, err := client.GetQueueLength(context.Background()) //TODO: context
+	return lengths, wf, err
 }
 
 func (h *Host) getClient(wf *config.GithubWorkflowConfig) client.Client {
@@ -63,7 +79,12 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 	var stateProvider state.IStateProvider
 	var err error
 	if len(conf.MemcachedServers) > 0 {
-		stateProvider, err = state.NewMemcachedStateProvider(conf.MemcachedServers, conf.MemcachedUser, conf.MemcachedPass)
+		pass := conf.MemcachedPass
+		if conf.MemcachedUser != "" && pass == "" && os.Getenv("MEMCACHED_PASSWORD") != "" {
+			fmt.Println("Getting password from $MEMCACHED_PASSWORD")
+			pass = os.Getenv("MEMCACHED_PASSWORD")
+		}
+		stateProvider, err = state.NewMemcachedStateProvider(conf.MemcachedServers, conf.MemcachedUser, pass)
 		if err != nil {
 			return nil, err
 		}
@@ -102,13 +123,13 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 
 func (h *Host) intializeClient(wf config.GithubWorkflowConfig, wg *sync.WaitGroup, cErr chan error) {
 	defer wg.Done()
-	client := gitclient.NewGitHubClient(wf.Token, wf.Owner, wf.Repository)
+	client := client.NewGitHubClient(wf.Token, wf.Owner, wf.Repository)
 	title := fmt.Sprintf("%s/%s (%s in %s)", wf.Owner, wf.Repository, wf.Name, wf.Namespace)
 	fmt.Printf("Initializing client %s\n", title)
 	queueLength, err := client.GetQueueLength(context.Background()) //TODO: context
 	if err != nil {
 		cErr <- fmt.Errorf("Error loading queue for client '%s': %v", title, err)
 	} else {
-		fmt.Printf("Client %s initialized (%d items in queue)\n", title, queueLength)
+		fmt.Printf("Client %s initialized (%d items in queue)\n", title, len(queueLength))
 	}
 }

@@ -1,4 +1,5 @@
 resources:
   - scaledobject_editor_role.yaml
   - scaledobject_viewer_role.yaml
+  - scaledactionrunner_viewer_role.yaml
   - role_binding.yaml

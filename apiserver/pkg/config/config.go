@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/namsral/flag"
+	"flag"
 
 	runnerClient "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/runnerclient"
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/scaling"

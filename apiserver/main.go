@@ -19,7 +19,6 @@ import (
 	config "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/config"
 	host "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/host"
 	k8sProvider "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/k8sprovider"
-	kedaProvider "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/kedaprovider"
 )
 
 type WorkflowMetricsAdapter struct {
@@ -57,7 +56,7 @@ func main() {
 	go cmd.initPrometheus()
 	testProvider := cmd.makeK8sProvider(h)
 	cmd.Authorization.WithAlwaysAllowGroups("system:unauthenticated")
-	cmd.WithExternalMetrics(testProvider)
+	cmd.WithCustomMetrics(testProvider)
 
 	klog.Infof(cmd.Message)
 	if err := cmd.Run(wait.NeverStop); err != nil {
@@ -65,13 +64,13 @@ func main() {
 	}
 }
 
-func (a *WorkflowMetricsAdapter) makeK8sProvider(orchestrator *host.Host) provider.ExternalMetricsProvider {
+func (a *WorkflowMetricsAdapter) makeK8sProvider(orchestrator *host.Host) provider.CustomMetricsProvider {
 	return k8sProvider.NewProvider(orchestrator)
 }
 
-func (a *WorkflowMetricsAdapter) makeKedaProvider(orchestrator *host.Host) {
-	kedaProvider.NewKedaProvider(orchestrator)
-}
+// func (a *WorkflowMetricsAdapter) makeKedaProvider(orchestrator *host.Host) {
+// 	kedaProvider.NewKedaProvider(orchestrator)
+// }
 
 func (a *WorkflowMetricsAdapter) initPrometheus() {
 	http.Handle("/metrics", promhttp.Handler())

@@ -14,52 +14,70 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	testArmName                     = "test-name"
-	testArmNamespace                = "test-arm-namespace"
+	testNamespace                   = "testns"
+	testName                        = "testname"
 	testArmReplicas                 = 3
 	testArmCacheWindowSecs          = 123
 	testArmCacheWindowWhenEmptySecs = 234
 	testArmResyncIntervalSecs       = 345
 	testArmUseExistingSslCertSecret = ""
-	testArmNamespaces               = ""
+	testNamespaces                  = ""
 )
 
 var _ = Describe("ActionRunnerMetrics controller", func() {
 	Context("ActionRunnerMetrics CRD", func() {
 		ctx := context.Background()
 		var arm *runnerv1alpha1.ActionRunnerMetrics
-		It("Should set up dependant Deployment, Memcached and ClusterTriggerAuthentication when created", func() {
-			Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testArmNamespace}})).Should(Succeed())
-			arm, _ = createTestActionRunnerMetrics(ctx, k8sClient, true, true, true)
+		var version string
+		It("Should set up dependant resources when created", func() {
+			Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testNamespace}})).Should(Succeed())
+			arm = getRunner(true, true, true)
+			Expect(k8sClient.Create(ctx, arm)).Should(Succeed())
 			testArmResults(ctx, []bool{true, true, true}, func(dep, mc *appsv1.Deployment, auth *keda.ClusterTriggerAuthentication) bool {
-				Expect(dep.Name).To(Equal(arm.ObjectMeta.Name))
-				Expect(mc.Name).To(Equal(arm.ObjectMeta.Name + "-cache"))
-				Expect(auth.Name).To(Equal(arm.ObjectMeta.Name))
-				Expect(dep.Namespace).To(Equal(arm.ObjectMeta.Namespace))
-				Expect(mc.Namespace).To(Equal(arm.ObjectMeta.Namespace))
-				Expect(auth.Namespace).To(Equal(arm.ObjectMeta.Namespace))
+				version = dep.ResourceVersion
+				Expect(dep.Name).To(Equal(arm.Spec.Name))
+				//Expect(mc.Name).To(Equal(arm.ObjectMeta.Name + "-cache"))
+				//Expect(auth.Name).To(Equal(arm.ObjectMeta.Name))
+				Expect(dep.Namespace).To(Equal(arm.Spec.Namespace))
+				//Expect(mc.Namespace).To(Equal(arm.ObjectMeta.Namespace))
+				//Expect(auth.Namespace).To(Equal(arm.ObjectMeta.Namespace))
 				return true
+			})
+		})
+		It("Should delete and recreate dependant resources when updated", func() {
+			Expect(k8sClient.Update(ctx, arm)).Should(Succeed())
+			secs := 0
+			testArmResults(ctx, []bool{true, true, true}, func(dep, mc *appsv1.Deployment, auth *keda.ClusterTriggerAuthentication) bool {
+				Expect(dep.ResourceVersion).To(Equal(version))
+				secs++
+				return secs >= 5
+			})
+			arm.Spec.Image = fmt.Sprintf("different_%s", arm.Spec.Image)
+			Expect(k8sClient.Update(ctx, arm)).Should(Succeed())
+			testArmResults(ctx, []bool{true, true, true}, func(dep, mc *appsv1.Deployment, auth *keda.ClusterTriggerAuthentication) bool {
+				return dep.ResourceVersion != version
 			})
 		})
 	})
 })
 
-func createTestActionRunnerMetrics(ctx context.Context, k8sClient client.Client, createApiServer bool, createMemcached bool, createAuthentication bool) (*runnerv1alpha1.ActionRunnerMetrics, []corev1.Secret) {
+func getRunner(createApiServer bool, createMemcached bool, createAuthentication bool) *runnerv1alpha1.ActionRunnerMetrics {
 	ns := make([]string, 0)
-	if testArmNamespaces != "" {
-		ns = strings.Split(testArmNamespaces, ",")
+	if testNamespaces != "" {
+		ns = strings.Split(testNamespaces, ",")
 	}
 
-	runner := runnerv1alpha1.ActionRunnerMetrics{
+	return &runnerv1alpha1.ActionRunnerMetrics{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      testArmName,
-			Namespace: testArmNamespace,
+			Name:      "main",
+			Namespace: "ignored",
 		},
 		Spec: runnerv1alpha1.ActionRunnerMetricsSpec{
+			Namespace:             testNamespace,
+			Name:                  testName,
 			Image:                 testImage,
 			Replicas:              testArmReplicas,
 			CacheWindow:           testArmCacheWindowSecs,
@@ -67,15 +85,11 @@ func createTestActionRunnerMetrics(ctx context.Context, k8sClient client.Client,
 			ResyncInterval:        testArmResyncIntervalSecs,
 			ExistingSslCertSecret: testArmUseExistingSslCertSecret,
 			Namespaces:            ns,
-			CreateApiServer:       createApiServer,
-			CreateMemcached:       createMemcached,
-			CreateAuthentication:  createAuthentication,
+			CreateApiServer:       &createApiServer,
+			CreateMemcached:       &createMemcached,
+			CreateAuthentication:  &createAuthentication,
 		},
 	}
-
-	Expect(k8sClient.Create(ctx, &runner)).Should(Succeed())
-
-	return &runner, nil
 }
 
 func testArmResults(ctx context.Context, expectedCreate []bool, test func(*appsv1.Deployment, *appsv1.Deployment, *keda.ClusterTriggerAuthentication) bool) {
@@ -83,11 +97,13 @@ func testArmResults(ctx context.Context, expectedCreate []bool, test func(*appsv
 		dep := appsv1.Deployment{}
 		memCached := appsv1.Deployment{}
 		auth := keda.ClusterTriggerAuthentication{}
-		nsName := types.NamespacedName{Namespace: testArmNamespace, Name: testArmName}
+		nsName := types.NamespacedName{Name: "main"}
 		e1 := k8sClient.Get(ctx, nsName, &dep)
-		e2 := k8sClient.Get(ctx, types.NamespacedName{Namespace: testArmNamespace, Name: fmt.Sprintf("%s-cache", testArmName)}, &memCached)
-		e3 := k8sClient.Get(ctx, nsName, &auth)
-		if e1 == nil != expectedCreate[0] || e2 == nil != expectedCreate[1] || e3 == nil != expectedCreate[2] {
+		//TODO: more tests
+		//e2 := k8sClient.Get(ctx, types.NamespacedName{Namespace: "main"space, Name: fmt.Sprintf("%s-cache", "main")}, &memCached)
+		//e3 := k8sClient.Get(ctx, nsName, &auth)
+		if e1 == nil != expectedCreate[0] {
+			// || e2 == nil != expectedCreate[1] || e3 == nil != expectedCreate[2] {
 			return false
 		}
 		return test(&dep, &memCached, &auth)

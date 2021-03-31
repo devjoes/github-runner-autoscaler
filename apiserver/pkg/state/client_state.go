@@ -19,7 +19,7 @@ func NewClientState(name string) *ClientState {
 
 type ClientState struct {
 	Name        string
-	LastValue   int
+	LastValue   map[int64]map[string]string
 	LastRequest time.Time
 	Status      Status
 }

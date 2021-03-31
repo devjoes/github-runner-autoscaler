@@ -2,10 +2,12 @@ package gitclient
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/state"
+	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -26,7 +28,7 @@ type IClient interface {
 }
 
 type IStatelessClient interface {
-	GetQueueLength(ctx context.Context) (int, error)
+	GetQueueLength(ctx context.Context) (map[int64]map[string]string, error)
 }
 
 type Client struct {
@@ -37,28 +39,30 @@ type Client struct {
 	name                 string
 }
 
-func (c *Client) GetQueueLength(ctx context.Context) (int, error) {
-	var length int
+func (c *Client) GetQueueLength(ctx context.Context) (map[int64]map[string]string, error) {
+	var jobQueue map[int64]map[string]string
 	cached := true
 	var err error
-	defer c.instrument(&length, &cached, &err)
+	defer c.instrument(&jobQueue, &cached, &err)
 	s, err := c.GetState()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	cacheUntil := s.LastRequest.Add(c.cacheWindow)
-	if s.LastValue == 0 {
+	if s.LastValue == nil || len(s.LastValue) == 0 {
 		cacheUntil = s.LastRequest.Add(c.cacheWindowWhenEmpty)
+		fmt.Println("empty")
 	}
 
 	if s.Status != state.Valid || time.Now().After(cacheUntil) {
 		cached = false
-		length, err = c.innerClient.GetQueueLength(ctx)
+		fmt.Printf("Cache miss %d %s %s %v\n", s.Status, cacheUntil.String(), time.Now().String(), s.LastValue)
+		jobQueue, err = c.innerClient.GetQueueLength(ctx)
 		if err != nil {
 			s.Status = state.Errored
 		} else {
 			s.LastRequest = time.Now()
-			s.LastValue = length
+			s.LastValue = jobQueue
 			s.Status = state.Valid
 		}
 		if saveErr := c.SaveState(s); saveErr != nil {
@@ -67,6 +71,9 @@ func (c *Client) GetQueueLength(ctx context.Context) (int, error) {
 			}
 			err = saveErr
 		}
+		fmt.Printf("Cached %v\n", err)
+	} else {
+		fmt.Println("Cache hit")
 	}
 
 	return s.LastValue, err
@@ -89,9 +96,10 @@ func NewClient(innerClient IStatelessClient, name string, cacheWindow time.Durat
 	}
 }
 
-func (c *Client) instrument(length *int, cached *bool, err *error) {
-	labels := []string{c.name, strconv.FormatBool(*cached), strconv.FormatBool(*err != nil)}
-	guageQueueLength.WithLabelValues(labels...).Set(float64(*length))
+func (c *Client) instrument(labeledJobIds *map[int64]map[string]string, cached *bool, err *error) {
+	labels := append([]string{c.name, strconv.FormatBool(*cached), strconv.FormatBool(*err != nil)}, utils.GetJobLabelDataForMetrics(labeledJobIds)...)
+
+	guageQueueLength.WithLabelValues(labels...).Set(float64(len(*labeledJobIds)))
 	counterQueries.WithLabelValues(labels...).Inc()
 }
 
@@ -99,9 +107,11 @@ var guageQueueLength *prometheus.GaugeVec
 var counterQueries *prometheus.CounterVec
 
 func init() {
-	labelNames := []string{"name",
+	labelNames := []string{
+		"name",
 		"cache_hit",
 		"failed"}
+	labelNames = append(labelNames, utils.JobLabelsToIncludeInMetrics...)
 	guageQueueLength = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "workflow_queue_length",
 		Help: "Number of jobs in queue when queried",

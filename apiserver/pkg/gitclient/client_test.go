@@ -20,7 +20,7 @@ func TestCallsInnerClientIfLastRequestInvalid(t *testing.T) {
 		queueLength := 321
 		stateProvider := state.NewInMemoryStateProvider()
 		stateProvider.SetState(StateName, &state.ClientState{
-			LastValue: 123,
+			LastValue: testutils.FakeQueueData(123),
 			Status:    status,
 		})
 		innerClient := testutils.ClientMock{
@@ -29,16 +29,17 @@ func TestCallsInnerClientIfLastRequestInvalid(t *testing.T) {
 		client := NewClient(&innerClient, StateName, time.Hour, time.Hour, stateProvider)
 		result, err := client.GetQueueLength(context.TODO())
 		assert.Nil(t, err)
-		assert.Equal(t, queueLength, result)
+		assert.Equal(t, queueLength, len(result))
 		s, _ := client.GetState()
-		assert.Equal(t, queueLength, s.LastValue)
+		assert.Equal(t, queueLength, len(s.LastValue))
 	}
 	test(state.Unset)
 	test(state.Errored)
 }
 
-func callEvery100Ms(t *testing.T, lastValue int, cacheWindowMs int, cacheWindowWhenEmptyMs int, callCount int) int {
+func callEvery100Ms(t *testing.T, lastTotalQueueSize int, cacheWindowMs int, cacheWindowWhenEmptyMs int, callCount int) int {
 	stateProvider := state.NewInMemoryStateProvider()
+	lastValue := testutils.FakeQueueData(lastTotalQueueSize)
 	stateProvider.SetState(StateName, &state.ClientState{
 		LastValue: lastValue,
 		Status:    state.Valid,
@@ -47,14 +48,15 @@ func callEvery100Ms(t *testing.T, lastValue int, cacheWindowMs int, cacheWindowW
 		RecordGetWorkQueueLength: true,
 		Delay:                    time.Millisecond * 100,
 		State:                    state.ClientState{},
-		QueueLength:              lastValue}
+		QueueLength:              lastTotalQueueSize,
+	}
 	client := NewClient(&innerClient, StateName, time.Duration(cacheWindowMs)*time.Millisecond, time.Duration(cacheWindowWhenEmptyMs)*time.Millisecond, stateProvider)
 
-	innerClient.On(GetQueueLength).Return(lastValue, nil)
+	innerClient.On(GetQueueLength).Return(lastTotalQueueSize, nil)
 	for i := 0; i < callCount; i++ {
-		length, err := client.GetQueueLength(context.TODO())
+		jobs, err := client.GetQueueLength(context.TODO())
 		assert.Nil(t, err)
-		assert.Equal(t, lastValue, length)
+		assert.Equal(t, lastTotalQueueSize, len(jobs))
 		time.Sleep(100 * time.Millisecond)
 	}
 	innerClient.AssertCalled(t, GetQueueLength)
@@ -69,4 +71,8 @@ func TestCachesDataFor500MsIfQueueIsEmpty(t *testing.T) {
 func TestCachesDataFor200MsIfQueueIsNotEmpty(t *testing.T) {
 	cacheMisses := callEvery100Ms(t, 123, 200, 500, 10)
 	assert.Equal(t, 5, cacheMisses)
+}
+
+func TestAgregatesData(t *testing.T) {
+
 }

@@ -88,7 +88,16 @@ var _ = BeforeSuite(func(done Done) {
 		Log:    ctrl.Log.WithName("controllers").WithName("ScaledActionRunner"),
 		Scheme: k8sManager.GetScheme(),
 	}
+
 	err = (r).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
+	r2 := &ActionRunnerMetricsReconciler{
+		Client: k8sManager.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("ScaledActionRunner"),
+		Scheme: k8sManager.GetScheme(),
+	}
+	err = (r2).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

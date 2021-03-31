@@ -20,15 +20,26 @@ type ClientMock struct {
 	ErrorOnGetQueueLength    bool
 }
 
-func (c *ClientMock) GetQueueLength(ctx context.Context) (int, error) {
+func (c *ClientMock) GetQueueLength(ctx context.Context) (map[int64]map[string]string, error) {
 	if c.ErrorOnGetQueueLength {
-		return 0, errors.New(fmt.Sprintf("%s Bang!", c.GetState("foo").Name))
+		return nil, errors.New(fmt.Sprintf("%s Bang!", c.GetState("foo").Name))
 	}
 	time.Sleep(c.Delay)
 	if c.RecordGetWorkQueueLength {
 		c.Called()
 	}
-	return c.QueueLength, nil
+	return FakeQueueData(c.QueueLength), nil
 }
 func (c *ClientMock) GetState(name string) *state.ClientState { return &c.State }
 func (c *ClientMock) SaveState(state *state.ClientState)      {}
+
+const WfIdLabel = "wf_id"
+const JobStatusLabel = "job_status"
+
+func FakeQueueData(size int) map[int64]map[string]string {
+	data := map[int64]map[string]string{}
+	for i := 0; i < size; i++ {
+		data[int64(i)] = map[string]string{JobStatusLabel: "queued", WfIdLabel: "123"}
+	}
+	return data
+}

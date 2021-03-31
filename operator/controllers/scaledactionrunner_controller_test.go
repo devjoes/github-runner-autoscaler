@@ -6,7 +6,7 @@ import (
 	"time"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
-	"github.com/devjoes/github-runner-autoscaler/operator/generators"
+	generators "github.com/devjoes/github-runner-autoscaler/operator/sargenerator"
 	keda "github.com/kedacore/keda/v2/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

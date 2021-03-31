@@ -14,7 +14,7 @@ spec:
     listKind: ActionRunnerMetricsList
     plural: actionrunnermetrics
     singular: actionrunnermetrics
-  scope: Namespaced
+  scope: Cluster
   versions:
   - name: v1alpha1
     schema:
@@ -55,21 +55,31 @@ spec:
                 type: boolean
               createMemcached:
                 type: boolean
+              enablePrometheusMetrics:
+                type: boolean
               existingMemcacheCredsSecret:
                 type: string
               existingMemcacheServers:
                 type: string
-              existingMemcacheUser:
-                type: string
               existingSslCertSecret:
                 type: string
               image:
-                description: Foo is an example field of ActionRunnerMetrics. Edit
-                  ActionRunnerMetrics_types.go to remove/update
+                type: string
+              kedaNamespace:
+                type: string
+              memcacheUser:
+                type: string
+              memcachedImage:
                 type: string
               memcachedReplicas:
                 format: int32
                 type: integer
+              name:
+                type: string
+              namespace:
+                description: Foo is an example field of ActionRunnerMetrics. Edit
+                  ActionRunnerMetrics_types.go to remove/update
+                type: string
               namespaces:
                 items:
                   type: string
@@ -84,20 +94,8 @@ spec:
                 format: int64
                 type: integer
             required:
-            - cacheWindow
-            - cacheWindowWhenEmpty
-            - createApiServer
-            - createAuthentication
-            - createMemcached
-            - existingMemcacheCredsSecret
-            - existingMemcacheServers
-            - existingMemcacheUser
-            - existingSslCertSecret
-            - image
-            - memcachedReplicas
-            - namespaces
-            - replicas
-            - resyncInterval
+            - name
+            - namespace
             type: object
           status:
             description: ActionRunnerMetricsStatus defines the observed state of ActionRunnerMetrics

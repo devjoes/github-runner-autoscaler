@@ -42,13 +42,13 @@ cat "$domain.pem"  | openssl x509 -text
 	cp "../$domain.pem" cert
 	cp "../$domain.key" key
 	cp "../ca.pem" ca
-	cp "../ca.pem" ca.pem
+	#cp "../ca.pem" ca.pem
 
 	kubectl delete secret cert -n runners || true
 	kubectl delete secret cert -n keda 	|| true
 	
 	kubectl create secret generic cert -n runners --from-file=cert  --from-file=key --from-file=ca
-	kubectl create secret generic cert -n keda --from-file=ca.pem
+	kubectl create secret generic cert -n keda --from-file=cert  --from-file=key --from-file=ca
 
 	kubectl delete po --all -n runners
 	kubectl delete po --all -n keda
