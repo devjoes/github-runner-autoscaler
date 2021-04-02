@@ -72,7 +72,3 @@ func TestCachesDataFor200MsIfQueueIsNotEmpty(t *testing.T) {
 	cacheMisses := callEvery100Ms(t, 123, 200, 500, 10)
 	assert.Equal(t, 5, cacheMisses)
 }
-
-func TestAgregatesData(t *testing.T) {
-
-}

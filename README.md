@@ -41,8 +41,7 @@ name: cert
 parameter: key
 EOF
 
-# known issues
-
-Cert auth is just used as a way of fudging TLS
-Deploy resources in corect order?
-Make runners close session on shutdown
+- TODO: Cert auth is just used as a way of fudging TLS
+- TODO: Deploy resources in corect order?
+- TODO: Make runners close session on shutdown
+- TODO: Have option to not output labels - could be sensitive
