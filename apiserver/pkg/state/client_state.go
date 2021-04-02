@@ -1,6 +1,10 @@
 package state
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/go-github/v33/github"
+)
 
 type Status int8
 
@@ -19,7 +23,7 @@ func NewClientState(name string) *ClientState {
 
 type ClientState struct {
 	Name        string
-	LastValue   map[int64]map[string]string
+	LastValue   []*github.WorkflowRun
 	LastRequest time.Time
 	Status      Status
 }

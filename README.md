@@ -6,13 +6,12 @@
 
 helm install prometheus prometheus-community/kube-prometheus-stack
 helm install keda kedacore/keda -n keda --set prometheus.operator.enabled=true --set prometheus.metricServer.enabled=true --create-namespace
-./cert.sh
 kubectl create ns runners
+./cert.sh
 kubectl apply -f runners-creds.secret.yaml
 (
 cd operator
-make install deploy
-kubectl delete deployment -n operator-system operator-controller-manager
+make install deploy;kubectl delete deployment -n operator-system operator-controller-manager
 kubectl apply -f ../crs.yaml
 make run
 )

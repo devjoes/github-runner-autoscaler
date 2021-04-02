@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/utils"
 	"github.com/google/go-github/v33/github"
 	"golang.org/x/oauth2"
 )
 
+type IStatelessClient interface {
+	GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, error)
+}
 type GithubClient struct {
 	Owner      string
 	Repository string
@@ -78,30 +80,7 @@ func getExtraWfInfo(resp *github.Response) map[int64]workflowRun {
 // 	}
 // }
 
-func GetLabels(runs []*github.WorkflowRun, resp *github.Response, statusesToInclude map[string]bool) map[int64]map[string]string {
-	labels := map[int64]map[string]string{}
-	//wfExtra := getExtraWfInfo(resp)
-	total := 0
-	for _, r := range runs {
-		if !statusesToInclude[*r.Status] {
-			continue
-		}
-		total++
-		labels[*r.ID] = map[string]string{
-			utils.WfIdLabel:      fmt.Sprintf("%d", *r.WorkflowID),
-			utils.JobStatusLabel: *r.Status,
-		}
-
-		// extra, found := wfExtra[*r.ID]
-		// if found {
-		// 	labels = updateCount(labels, fmt.Sprintf("%s=%s", WfNameLabel, *extra.Name), 1)
-		// }
-	}
-
-	return labels
-}
-
-func (c *GithubClient) GetQueueLength(ctx context.Context) (map[int64]map[string]string, error) {
+func (c *GithubClient) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, error) {
 	// This wastes credits - just getting the top 100 should work pretty much all of the time
 	// statuses := []string{
 	// 	"queued",
@@ -127,7 +106,7 @@ func (c *GithubClient) GetQueueLength(ctx context.Context) (map[int64]map[string
 	// 	}
 	// 	lock.Unlock()
 	// }
-	runs, resp, err := c.client.Actions.ListRepositoryWorkflowRuns(ctx, c.Owner, c.Repository, &github.ListWorkflowRunsOptions{
+	runs, _, err := c.client.Actions.ListRepositoryWorkflowRuns(ctx, c.Owner, c.Repository, &github.ListWorkflowRunsOptions{
 		ListOptions: github.ListOptions{
 			PerPage: 100,
 		},
@@ -135,13 +114,22 @@ func (c *GithubClient) GetQueueLength(ctx context.Context) (map[int64]map[string
 	if err != nil {
 		return nil, err
 	}
+	jobs := filterJobsByStatus(runs.WorkflowRuns)
+	return jobs, nil
+}
 
+func filterJobsByStatus(jobs []*github.WorkflowRun) []*github.WorkflowRun {
+	filtered := []*github.WorkflowRun{}
 	statuses := map[string]bool{
 		"queued":      true,
 		"waiting":     true,
 		"requested":   true,
 		"in_progress": true,
 	}
-	labels := GetLabels(runs.WorkflowRuns, resp, statuses)
-	return labels, nil
+	for _, j := range jobs {
+		if statuses[*j.Status] {
+			filtered = append(filtered, j)
+		}
+	}
+	return filtered
 }

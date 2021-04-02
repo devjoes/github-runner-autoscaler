@@ -116,7 +116,7 @@ var _ = Describe("ScaledActionRunner controller", func() {
 				Expect(*so.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior.ScaleUp.StabilizationWindowSeconds).To(Not(BeEquivalentTo(testSarStabalizationWindowSecs)))
 				Expect(so.Spec.ScaleTargetRef.Name).To(Equal(ss.Name))
 				Expect(so.Spec.Triggers[0].Type).To(Equal("metrics-api"))
-				Expect(strings.HasSuffix(so.Spec.Triggers[0].Metadata["url"], testSarNamespace+"/"+testSarName)).To(BeTrue())
+				Expect(strings.Contains(so.Spec.Triggers[0].Metadata["url"], testSarNamespace+"/"+testSarName)).To(BeTrue())
 				return true
 			})
 		})

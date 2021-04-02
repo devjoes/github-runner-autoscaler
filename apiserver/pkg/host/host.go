@@ -5,11 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
-	"sync"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/config"
 	client "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/gitclient"
+	labeling "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/labeling"
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/state"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -19,60 +18,37 @@ type Host struct {
 	stateProvider state.IStateProvider
 }
 
-func (h *Host) GetAllMetricNames() ([]string, error) {
+func (h *Host) GetAllMetricNames(namespace string) ([]string, error) {
 	wfs := h.config.GetAllWorkflows()
 	metrics := make([]string, len(wfs))
 	for i, wf := range wfs {
-		metrics[i] = wf.Name
+		if namespace == "" || wf.Namespace == namespace {
+			metrics[i] = wf.Name
+		}
 	}
 	return metrics, nil
 }
 
-func (h *Host) GetAllMetricLabels() []labels.Set {
-	wfs := h.config.GetAllWorkflows()
-	metricLabels := make([]labels.Set, len(wfs))
-	for _, wf := range wfs {
-		lbls := map[string]string{
-			"name":      wf.Name,
-			"namespace": wf.Namespace,
-			"repo":      wf.Repository,
-			"owner":     wf.Owner,
-		}
-		metricLabels = append(metricLabels, lbls)
-	}
-	return metricLabels
-}
-
 const MetricErrNotFound string = "metric not found"
 
-func (h *Host) QueryMetric(key string) (map[int64]map[string]string, *config.GithubWorkflowConfig, error) {
+func (h *Host) QueryMetric(key string, selector labels.Selector) (int, map[string][]string, *config.GithubWorkflowConfig, error) {
 	wf, err := h.config.GetWorkflow(key)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, nil, err
 	}
 	if wf == nil {
-		return nil, nil, errors.New(MetricErrNotFound)
+		return 0, nil, nil, errors.New(MetricErrNotFound)
 	}
 	client := h.getClient(wf)
-	lengths, err := client.GetQueueLength(context.Background()) //TODO: context
-	return lengths, wf, err
+	jobs, err := client.GetQueuedJobs(context.Background())
+	filteredJobs, matchedLabels := labeling.FilterBySelector(jobs, wf, selector)
+	return len(filteredJobs), matchedLabels, wf, err
 }
 
 func (h *Host) getClient(wf *config.GithubWorkflowConfig) client.Client {
 	githubClient := client.NewGitHubClient(wf.Token, wf.Owner, wf.Repository)
 	key := wf.Name
 	return client.NewClient(&githubClient, key, h.config.CacheWindow, h.config.CacheWindowWhenEmpty, h.stateProvider)
-}
-
-func (h *Host) getClients() ([]client.Client, error) {
-	clients := []client.Client{}
-	wfs := h.config.GetAllWorkflows()
-	for _, wf := range wfs {
-		innerClient := client.NewGitHubClient(wf.Token, wf.Owner, wf.Repository)
-		client := client.NewClient(&innerClient, wf.Name, h.config.CacheWindow, h.config.CacheWindowWhenEmpty, h.stateProvider)
-		clients = append(clients, client)
-	}
-	return clients, nil
 }
 
 func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
@@ -95,41 +71,5 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 		config:        conf,
 		stateProvider: stateProvider,
 	}
-	var wfs []config.GithubWorkflowConfig
-	if len(params) > 0 {
-		wfs = params[0].([]config.GithubWorkflowConfig)
-	} else {
-		wfs = conf.GetAllWorkflows()
-	}
-	var wg sync.WaitGroup
-	cErr := make(chan error, len(wfs))
-	for _, c := range wfs {
-		wg.Add(1)
-		go h.intializeClient(c, &wg, cErr)
-	}
-	wg.Wait()
-	close(cErr)
-
-	var errMsgs []string
-	for err := range cErr {
-		errMsgs = append(errMsgs, err.Error())
-	}
-
-	if len(errMsgs) > 0 {
-		return nil, errors.New(strings.Join(errMsgs, "\n"))
-	}
 	return &h, nil
-}
-
-func (h *Host) intializeClient(wf config.GithubWorkflowConfig, wg *sync.WaitGroup, cErr chan error) {
-	defer wg.Done()
-	client := client.NewGitHubClient(wf.Token, wf.Owner, wf.Repository)
-	title := fmt.Sprintf("%s/%s (%s in %s)", wf.Owner, wf.Repository, wf.Name, wf.Namespace)
-	fmt.Printf("Initializing client %s\n", title)
-	queueLength, err := client.GetQueueLength(context.Background()) //TODO: context
-	if err != nil {
-		cErr <- fmt.Errorf("Error loading queue for client '%s': %v", title, err)
-	} else {
-		fmt.Printf("Client %s initialized (%d items in queue)\n", title, len(queueLength))
-	}
 }

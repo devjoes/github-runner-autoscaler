@@ -14,6 +14,6 @@ func TestAPIAccess(t *testing.T) {
 		t.Skip("Skipping TestAPIAccess because GITHUB_TOKEN environment variable was not set")
 	}
 	client := NewGitHubClient(token, "devjoes", "test")
-	_, err := client.GetQueueLength(context.Background())
+	_, err := client.GetQueuedJobs(context.Background())
 	assert.Nil(t, err)
 }

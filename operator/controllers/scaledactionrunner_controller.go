@@ -78,7 +78,7 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 	metricsEndpoint := fmt.Sprintf("%s.%s.svc", metrics.Spec.Name, metrics.Spec.Namespace)
 	//TODO: Parse labels
 	//TODO: Is there a "match anything selector"?
-	selector := "all=true"
+	selector := "*"
 	metricsUrl := fmt.Sprintf("https://%s/apis/custom.metrics.k8s.io/v1beta1/namespaces/%s/Scaledactionrunners/%s/%s", metricsEndpoint, req.Namespace, req.Name, selector)
 
 	if runner == nil {

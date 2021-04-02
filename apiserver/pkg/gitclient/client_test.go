@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	StateName      = "foo"
-	GetQueueLength = "GetQueueLength"
+	StateName     = "foo"
+	GetQueuedJobs = "GetQueuedJobs"
 )
 
 func TestCallsInnerClientIfLastRequestInvalid(t *testing.T) {
@@ -27,7 +27,7 @@ func TestCallsInnerClientIfLastRequestInvalid(t *testing.T) {
 			QueueLength: queueLength,
 			State:       state.ClientState{}}
 		client := NewClient(&innerClient, StateName, time.Hour, time.Hour, stateProvider)
-		result, err := client.GetQueueLength(context.TODO())
+		result, err := client.GetQueuedJobs(context.TODO())
 		assert.Nil(t, err)
 		assert.Equal(t, queueLength, len(result))
 		s, _ := client.GetState()
@@ -52,14 +52,14 @@ func callEvery100Ms(t *testing.T, lastTotalQueueSize int, cacheWindowMs int, cac
 	}
 	client := NewClient(&innerClient, StateName, time.Duration(cacheWindowMs)*time.Millisecond, time.Duration(cacheWindowWhenEmptyMs)*time.Millisecond, stateProvider)
 
-	innerClient.On(GetQueueLength).Return(lastTotalQueueSize, nil)
+	innerClient.On(GetQueuedJobs).Return(lastTotalQueueSize, nil)
 	for i := 0; i < callCount; i++ {
-		jobs, err := client.GetQueueLength(context.TODO())
+		jobs, err := client.GetQueuedJobs(context.TODO())
 		assert.Nil(t, err)
 		assert.Equal(t, lastTotalQueueSize, len(jobs))
 		time.Sleep(100 * time.Millisecond)
 	}
-	innerClient.AssertCalled(t, GetQueueLength)
+	innerClient.AssertCalled(t, GetQueuedJobs)
 	return len(innerClient.Calls)
 }
 

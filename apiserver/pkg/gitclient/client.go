@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/state"
-	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/utils"
+	"github.com/google/go-github/v33/github"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -22,13 +22,9 @@ const (
 )
 
 type IClient interface {
-	GetQueueLength(ctx context.Context) (int, error)
-	GetState() (*state.ClientState, error) //TODO: This should probably be loaded (and saved) from redis, memcached or something if we want multiple replicas
+	GetQueuedJobs(ctx context.Context) (int, error)
+	GetState() (*state.ClientState, error)
 	SaveState(state *state.ClientState) error
-}
-
-type IStatelessClient interface {
-	GetQueueLength(ctx context.Context) (map[int64]map[string]string, error)
 }
 
 type Client struct {
@@ -39,8 +35,8 @@ type Client struct {
 	name                 string
 }
 
-func (c *Client) GetQueueLength(ctx context.Context) (map[int64]map[string]string, error) {
-	var jobQueue map[int64]map[string]string
+func (c *Client) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, error) {
+	var jobQueue []*github.WorkflowRun
 	cached := true
 	var err error
 	defer c.instrument(&jobQueue, &cached, &err)
@@ -57,7 +53,7 @@ func (c *Client) GetQueueLength(ctx context.Context) (map[int64]map[string]strin
 	if s.Status != state.Valid || time.Now().After(cacheUntil) {
 		cached = false
 		fmt.Printf("Cache miss %d %s %s %v\n", s.Status, cacheUntil.String(), time.Now().String(), s.LastValue)
-		jobQueue, err = c.innerClient.GetQueueLength(ctx)
+		jobQueue, err = c.innerClient.GetQueuedJobs(ctx)
 		if err != nil {
 			s.Status = state.Errored
 		} else {
@@ -96,8 +92,8 @@ func NewClient(innerClient IStatelessClient, name string, cacheWindow time.Durat
 	}
 }
 
-func (c *Client) instrument(labeledJobIds *map[int64]map[string]string, cached *bool, err *error) {
-	labels := append([]string{c.name, strconv.FormatBool(*cached), strconv.FormatBool(*err != nil)}, utils.GetJobLabelDataForMetrics(labeledJobIds)...)
+func (c *Client) instrument(labeledJobIds *[]*github.WorkflowRun, cached *bool, err *error) {
+	labels := append([]string{c.name, strconv.FormatBool(*cached), strconv.FormatBool(*err != nil)})
 
 	guageQueueLength.WithLabelValues(labels...).Set(float64(len(*labeledJobIds)))
 	counterQueries.WithLabelValues(labels...).Inc()
@@ -111,7 +107,7 @@ func init() {
 		"name",
 		"cache_hit",
 		"failed"}
-	labelNames = append(labelNames, utils.JobLabelsToIncludeInMetrics...)
+	labelNames = append(labelNames)
 	guageQueueLength = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "workflow_queue_length",
 		Help: "Number of jobs in queue when queried",
