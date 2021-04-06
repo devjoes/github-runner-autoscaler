@@ -1,4 +1,4 @@
-package generators
+package sargenerator
 
 import (
 	"testing"
@@ -17,6 +17,6 @@ func TestCreatesScaledObject(t *testing.T) {
 		Spec: v1alpha1.ScaledActionRunnerSpec{
 			MaxRunners: 10,
 		},
-	}, "https://foo/bar")
+	}, "https://foo/bar", "baz")
 	assert.NotNil(t, co)
 }

@@ -1,0 +1,50 @@
+kind: ActionRunnerMetrics
+apiVersion: runner.devjoes.com/v1alpha1
+metadata:
+  name: main
+spec:
+  name: test123
+  namespace: runners
+  existingSslCertSecret: cert
+  image: "joeshearn/github-runner-autoscaler-apiserver:custommetrics22"
+---
+kind: ScaledActionRunner
+apiVersion: runner.devjoes.com/v1alpha1
+metadata:
+  name: js-hello
+  namespace: runners
+spec:
+  githubTokenSecret: test-github
+  maxRunners: 4
+  owner: JSainsburyPLC
+  repo: js-hello
+  runner:
+    image: "joeshearn/action-runner-sideloaded-config:000012_163974b6f0d6"
+    labels: foo
+    limits:
+      cpu: "2"
+      memory: 1Gi
+    workVolumeClaimTemplate:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 5Gi
+      storageClassName: manual
+      volumeMode: Filesystem
+  runnerSecrets:
+    - test-0
+    - test-1
+    - test-2
+    - test-3
+  scaleFactor: "0"
+  scaling:
+    behavior:
+      scaleUp:
+        policies:
+          - periodSeconds: 30
+            type: Percent
+            value: 100
+        stabilizationWindowSeconds: 30
+    cooldownPeriod: 3600
+    pollingInterval: 30

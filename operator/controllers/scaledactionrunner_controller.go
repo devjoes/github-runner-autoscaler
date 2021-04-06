@@ -26,7 +26,7 @@ import (
 	"time"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
-	"github.com/devjoes/github-runner-autoscaler/operator/generators"
+	sargenerator "github.com/devjoes/github-runner-autoscaler/operator/sargenerator"
 	"github.com/go-logr/logr"
 	keda "github.com/kedacore/keda/v2/api/v1alpha1"
 	"github.com/pingcap/errors"
@@ -69,6 +69,7 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
 	if runner == nil {
 		// Deleted
 		e1 := r.deleteDependant(ctx, log, req, &keda.ScaledObject{})
@@ -82,8 +83,28 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
+	var metricsNamespace, metricsName string
+	if runner.Annotations != nil {
+		metricsName = runner.Annotations["OverrideMetricsName"]
+		metricsNamespace = runner.Annotations["OverrideMetricsNamespace"]
+	}
+
+	if metricsName == "" || metricsNamespace == "" {
+		metrics, err := r.GetActionRunnerMetrics(ctx, log)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		metricsName = metrics.Spec.Name
+		metricsNamespace = metrics.Spec.Namespace
+	}
+
+	metricsEndpoint := fmt.Sprintf("%s.%s.svc", metricsName, metricsNamespace)
+	//TODO: Parse labels
+	selector := "*"
+	metricsUrl := fmt.Sprintf("https://%s/apis/custom.metrics.k8s.io/v1beta1/namespaces/%s/Scaledactionrunners/%s/%s", metricsEndpoint, req.Namespace, req.Name, selector)
+
 	setModified, setErr := r.syncStatefulSet(ctx, log, runner)
-	scaledObjectModified, objErr := r.syncScaledObject(ctx, log, runner)
+	scaledObjectModified, objErr := r.syncScaledObject(ctx, log, runner, metricsUrl, metricsName)
 	if setErr != nil {
 		return ctrl.Result{}, setErr
 	}
@@ -136,16 +157,27 @@ func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context
 	}
 	return scaledActionRunner, nil
 }
-func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log logr.Logger, config *runnerv1alpha1.ScaledActionRunner) (bool, error) {
-	//TODO: make these configurable
-	metricsEndpoint := "external-metrics-apiserver.runners.svc.cluster.local"
-	metricsUrl := fmt.Sprintf("https://%s/apis/external.metrics.k8s.io/v1beta1/namespaces/%s/%s", metricsEndpoint, config.ObjectMeta.Namespace, config.ObjectMeta.Name)
 
+func (r *ScaledActionRunnerReconciler) GetActionRunnerMetrics(ctx context.Context, log logr.Logger) (*runnerv1alpha1.ActionRunnerMetrics, error) {
+	metrics := &runnerv1alpha1.ActionRunnerMetrics{}
+	err := r.Client.Get(ctx, types.NamespacedName{Namespace: "", Name: "main"}, metrics)
+
+	if err != nil {
+		log.Error(err, "Errored getting ActionRunnerMetricsList resource called 'main'. It must be called 'main'")
+		return nil, err
+	}
+
+	metrics.Setup()
+
+	return metrics, nil
+}
+
+func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log logr.Logger, config *runnerv1alpha1.ScaledActionRunner, metricsUrl string, clusterTriggerName string) (bool, error) {
 	var so keda.ScaledObject
 	err := r.Get(ctx, types.NamespacedName{Name: config.ObjectMeta.Name, Namespace: config.ObjectMeta.Namespace}, &so)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			so = *generators.GenerateScaledObject(config, metricsUrl)
+			so = *sargenerator.GenerateScaledObject(config, metricsUrl, clusterTriggerName)
 			(resourceLog(log, "Creating a new %s", &so))
 			ctrl.SetControllerReference(config, &so, r.Scheme)
 			err = r.Create(ctx, &so)
@@ -159,7 +191,7 @@ func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log
 		}
 	}
 	updatedSo := so.DeepCopy()
-	modified := assignScaledObjectPropsFromRunner(updatedSo, config, metricsUrl)
+	modified := assignScaledObjectPropsFromRunner(updatedSo, config, metricsUrl, clusterTriggerName)
 
 	if modified {
 		(resourceLog(log, "Updating %s", &so))
@@ -168,6 +200,7 @@ func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log
 			log.Error(err, "errored whilst diffing objects")
 		}
 		log.Info("differences", "changes", changes)
+		updatedSo.ResourceVersion = so.ResourceVersion
 		err = r.Update(ctx, updatedSo)
 		if err != nil {
 			log.Error(err, "Failed to update ScaledObject "+so.Name)
@@ -177,7 +210,7 @@ func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log
 	return modified, nil
 }
 
-func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv1alpha1.ScaledActionRunner, metricsUrl string) bool {
+func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv1alpha1.ScaledActionRunner, metricsUrl string, clusterTriggerName string) bool {
 	updated := false
 	if found.ObjectMeta.Name != config.ObjectMeta.Name {
 		found.ObjectMeta.Name = config.ObjectMeta.Name
@@ -206,7 +239,7 @@ func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv
 		spec.MaxReplicaCount = &config.Spec.MaxRunners
 	}
 	if spec.ScaleTargetRef == nil || spec.Triggers == nil || len(spec.Triggers) == 0 {
-		so := generators.GenerateScaledObject(config, metricsUrl)
+		so := sargenerator.GenerateScaledObject(config, metricsUrl, clusterTriggerName)
 		spec = so.Spec
 	}
 	if spec.ScaleTargetRef.Name != config.ObjectMeta.Name {
@@ -239,8 +272,8 @@ func (r *ScaledActionRunnerReconciler) getSecretsHash(ctx context.Context, c *ru
 		if secret.Annotations == nil {
 			secret.Annotations = make(map[string]string)
 		}
-		if secret.Annotations[generators.AnnotationRunnerRef] != ref {
-			secret.Annotations[generators.AnnotationRunnerRef] = ref
+		if secret.Annotations[sargenerator.AnnotationRunnerRef] != ref {
+			secret.Annotations[sargenerator.AnnotationRunnerRef] = ref
 			r.Update(ctx, &secret)
 		}
 
@@ -277,7 +310,7 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 		return false, fmt.Errorf("Failed to get secrets %s", err.Error())
 	}
 
-	newSs := generators.GenerateStatefulSet(config, secretsHash)
+	newSs := sargenerator.GenerateStatefulSet(config, secretsHash)
 	existingSs := &appsv1.StatefulSet{}
 	err = r.Get(ctx, types.NamespacedName{Name: config.ObjectMeta.Name, Namespace: config.ObjectMeta.Namespace}, existingSs)
 
@@ -341,8 +374,8 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 	if oldSs.ObjectMeta.Annotations == nil {
 		updatedSs.ObjectMeta.Annotations = make(map[string]string)
 	}
-	if oldSs.ObjectMeta.Annotations[generators.AnnotationSecretsHash] != secretsHash {
-		updatedSs.ObjectMeta.Annotations[generators.AnnotationSecretsHash] = secretsHash
+	if oldSs.ObjectMeta.Annotations[sargenerator.AnnotationSecretsHash] != secretsHash {
+		updatedSs.ObjectMeta.Annotations[sargenerator.AnnotationSecretsHash] = secretsHash
 		updated = true
 	}
 	if oldSs.Spec.Template.Spec.Containers[0].Image != config.Spec.Runner.Image {
@@ -366,8 +399,8 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 		}
 	}
 
-	updated = generators.SetEnvVars(config, updatedSs) || updated
-	volumes, volumeMounts := generators.GetVolumes(config)
+	updated = sargenerator.SetEnvVars(config, updatedSs) || updated
+	volumes, volumeMounts := sargenerator.GetVolumes(config)
 	if !reflect.DeepEqual(volumes, oldSs.Spec.Template.Spec.Volumes) {
 		updatedSs.Spec.Template.Spec.Volumes = volumes
 		updated = true

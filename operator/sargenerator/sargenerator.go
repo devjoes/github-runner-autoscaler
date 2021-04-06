@@ -1,4 +1,4 @@
-package generators
+package sargenerator
 
 import (
 	"fmt"
@@ -15,12 +15,17 @@ import (
 const AnnotationRunnerRef = "runner-ref"
 const AnnotationSecretsHash = "runner-secrets-hash"
 
-func getLabels(name string) map[string]string {
-	return map[string]string{"app": "github_runner", "github_runner_cr": name}
+func getLabels(res metav1.Object) map[string]string {
+	ls := res.GetLabels()
+	if ls == nil {
+		ls = map[string]string{}
+	}
+	ls["product"] = "github_actions_operator"
+	return ls
 }
 
 //TODO: Take this approach for StatefulSets too
-func UpdateScaledObjectSpec(c *runnerv1alpha1.ScaledActionRunner, url string, spec *keda.ScaledObjectSpec) {
+func UpdateScaledObjectSpec(c *runnerv1alpha1.ScaledActionRunner, url string, spec *keda.ScaledObjectSpec, clusterTriggerName string) {
 	spec.ScaleTargetRef = &keda.ScaleTarget{
 		Kind:       "StatefulSet",
 		Name:       c.ObjectMeta.Name,
@@ -32,7 +37,8 @@ func UpdateScaledObjectSpec(c *runnerv1alpha1.ScaledActionRunner, url string, sp
 		{
 			Type: "metrics-api",
 			AuthenticationRef: &keda.ScaledObjectAuthRef{
-				Name: "certs",
+				Name: clusterTriggerName,
+				Kind: "ClusterTriggerAuthentication",
 			},
 			Metadata: map[string]string{
 				"targetValue":   "1",
@@ -55,10 +61,10 @@ func UpdateScaledObjectSpec(c *runnerv1alpha1.ScaledActionRunner, url string, sp
 	}
 }
 
-func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *keda.ScaledObject {
-	ls := getLabels(c.Name)
+func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string, clusterTriggerName string) *keda.ScaledObject {
+	ls := getLabels(c)
 	spec := keda.ScaledObjectSpec{}
-	UpdateScaledObjectSpec(c, url, &spec)
+	UpdateScaledObjectSpec(c, url, &spec, clusterTriggerName)
 
 	resource := keda.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{Name: c.ObjectMeta.Name, Namespace: c.ObjectMeta.Namespace, Labels: ls},
@@ -68,7 +74,8 @@ func GenerateScaledObject(c *runnerv1alpha1.ScaledActionRunner, url string) *ked
 }
 
 func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash string) *appsv1.StatefulSet {
-	ls := getLabels(c.Name)
+	ls := getLabels(c)
+	ls["app"] = "action-runner"
 	as := map[string]string{
 		AnnotationSecretsHash: secretsHash,
 	}

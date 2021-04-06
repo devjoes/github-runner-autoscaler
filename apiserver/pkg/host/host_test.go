@@ -3,6 +3,7 @@ package host
 const (
 	testClientCount = 5
 )
+
 //TODO: Fix/remove these tests now that the archietecture has changed
 // func getClients(errorOnGetQueueLength bool, from int, to int) ([]client.Client, []*testutils.ClientMock) {
 // 	var innerClients []*testutils.ClientMock

@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
-	gen "github.com/devjoes/github-runner-autoscaler/operator/generators"
+	gen "github.com/devjoes/github-runner-autoscaler/operator/sargenerator"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"

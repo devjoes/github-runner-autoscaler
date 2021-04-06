@@ -5,28 +5,32 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bradfitz/gomemcache/memcache"
+	"github.com/memcachier/mc"
 )
 
 type MemcachedStateProvider struct {
-	mc *memcache.Client
+	cache *mc.Client
 }
 
-func NewMemcachedStateProvider(servers []string) (*MemcachedStateProvider, error) {
-	mc := memcache.New(servers...)
-	return &MemcachedStateProvider{mc: mc}, nil
+func NewMemcachedStateProvider(servers string, username string, password string) (*MemcachedStateProvider, error) {
+	cache := mc.NewMC(servers, username, password)
+	_, err := cache.Set("ok", "ok", 0, 10, 0)
+	if err != nil {
+		return nil, fmt.Errorf("Could not connect to cache with '%s' '%s' '%s': %s", servers, username, password, err.Error())
+	}
+	return &MemcachedStateProvider{cache: cache}, nil
 }
 
 func (p *MemcachedStateProvider) GetState(key string) (*ClientState, error) {
-	s, err := p.mc.Get(key)
+	val, _, _, err := p.cache.Get(key)
 	if err == nil {
 		var state ClientState
-		err = json.Unmarshal(s.Value, &state)
+		err = json.Unmarshal([]byte(val), &state)
 		if err == nil {
 			return &state, nil
 		}
 	}
-	if errors.Is(err, memcache.ErrCacheMiss) {
+	if errors.Is(err, mc.ErrNotFound) {
 		return NewClientState(key), nil
 	}
 	//TODO: Configurable
@@ -38,5 +42,6 @@ func (p *MemcachedStateProvider) SetState(key string, state *ClientState) error 
 	if err != nil {
 		return err
 	}
-	return p.mc.Set(&memcache.Item{Key: key, Value: data, Expiration: 60 * 60})
+	_, err = p.cache.Set(key, string(data), 0, 60*60, 0)
+	return err
 }

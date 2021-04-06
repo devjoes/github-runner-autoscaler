@@ -1,0 +1,7 @@
+apiVersion: runner.devjoes.com/v1alpha1
+kind: ActionRunnerMetrics
+metadata:
+  name: actionrunnermetrics-sample
+spec:
+  # Add fields here
+  foo: bar

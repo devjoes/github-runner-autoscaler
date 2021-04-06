@@ -31,8 +31,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -72,6 +73,9 @@ var _ = BeforeSuite(func(done Done) {
 	err = runnerv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = runnerv1alpha1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
 	// +kubebuilder:scaffold:scheme
 
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
@@ -84,7 +88,16 @@ var _ = BeforeSuite(func(done Done) {
 		Log:    ctrl.Log.WithName("controllers").WithName("ScaledActionRunner"),
 		Scheme: k8sManager.GetScheme(),
 	}
+
 	err = (r).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
+	r2 := &ActionRunnerMetricsReconciler{
+		Client: k8sManager.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("ScaledActionRunner"),
+		Scheme: k8sManager.GetScheme(),
+	}
+	err = (r2).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

@@ -49,6 +49,7 @@ func (c *Config) GetAllWorkflows() []GithubWorkflowConfig {
 
 func (c *Config) GetWorkflow(key string) (*GithubWorkflowConfig, error) {
 	item, found, err := c.store.GetByKey(key)
+	fmt.Printf("GetWorkflow %s %t %v %v", key, found, item, err)
 	if !found {
 		return nil, nil
 	}

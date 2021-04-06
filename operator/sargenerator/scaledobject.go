@@ -1,4 +1,4 @@
-package generators
+package sargenerator
 
 // import (
 // 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"

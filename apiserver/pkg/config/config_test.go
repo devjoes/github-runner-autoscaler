@@ -18,12 +18,16 @@ func createConfig(runnerNSsStr string, allNs bool, kubeconfig string, inCluster 
 	flagRunnerNSs := &ArrayFlags{}
 	flagRunnerNSs.Set(runnerNSsStr)
 	rs := resyncInterval.String()
+	empty := ""
 	config := Config{
 		flagRunnerNSs:         flagRunnerNSs,
 		flagAllNs:             &allNs,
 		flagKubeconfig:        &kubeconfig,
 		flagInClusterConfig:   &inCluster,
 		flagResyncIntervalStr: &rs,
+		flagMemcachedServers:  &empty,
+		flagMemcachedUser:     &empty,
+		flagMemcachedPass:     &empty,
 	}
 	err := config.SetupConfig(params...)
 	return config, err
