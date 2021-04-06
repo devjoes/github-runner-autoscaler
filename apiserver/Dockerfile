@@ -3,7 +3,7 @@ RUN apk --no-cache add ca-certificates
 
 # Build the apiserver binary
 FROM golang:1.15 as builder
-
+RUN apt update && apt install memcached -y && apt clean && service memcached start
 WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod

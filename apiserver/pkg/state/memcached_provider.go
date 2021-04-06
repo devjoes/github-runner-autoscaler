@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/devjoes/mc/v3" //TODO: Revert to memcachier/mc once https://github.com/memcachier/mc/issues/16 is fixed
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 type MemcachedStateProvider struct {
@@ -19,7 +20,10 @@ func NewMemcachedStateProvider(servers string, username string, argPassword stri
 		password = os.Getenv("MEMCACHED_PASSWORD")
 	}
 	cache := mc.NewMC(servers, username, password)
-	_, err := cache.Set("ok", "ok", 0, 10, 0)
+	key := fmt.Sprintf("test_%s", rand.String(5))
+	// Internally the client picks a server based on the hash of the key
+	// so it is a good test to make the key dynamic
+	_, err := cache.Set(key, "ok", 0, 1, 0)
 	if err != nil {
 		return nil, fmt.Errorf("Could not connect to cache with '%s' '%s' '%s': %s", servers, username, password, err.Error())
 	}

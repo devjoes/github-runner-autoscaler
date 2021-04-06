@@ -18,8 +18,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
-//TODO: rediness probe
-
 type metricValue struct {
 	labels labels.Set
 	value  resource.Quantity
