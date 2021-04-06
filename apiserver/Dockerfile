@@ -19,7 +19,8 @@ COPY pkg/ pkg/
 COPY internal/ internal/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o apiserver main.go
+#TODO: GOPRIVATE can be removed after github.com/devjoes/mc is merged in to upstream
+RUN GOPRIVATE=github.com/devjoes CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o apiserver main.go
 RUN go test ./...
 
 FROM gcr.io/distroless/static:nonroot
