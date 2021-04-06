@@ -600,7 +600,7 @@ const JsonApiServer = `{
 						],
 						"livenessProbe": {
 							"httpGet": {
-							"path": "/healthz",
+							"path": "/livez",
 							"port": 2112
 							}
 						},
