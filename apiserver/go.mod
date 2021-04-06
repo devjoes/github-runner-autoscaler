@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/devjoes/github-runner-autoscaler/operator v0.0.0-20210328184102-78147cd553f6 // indirect
+	github.com/devjoes/mc v2.0.1+incompatible // indirect
 	github.com/golang/protobuf v1.5.1
 	github.com/google/go-github/v33 v33.0.0
 	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20210311094424-0ca2b1909cdc

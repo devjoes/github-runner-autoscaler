@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/memcachier/mc"
+	"github.com/devjoes/mc" //TODO: Revert to memcachier/mc once https://github.com/memcachier/mc/issues/16 is fixed
 )
 
 type MemcachedStateProvider struct {
