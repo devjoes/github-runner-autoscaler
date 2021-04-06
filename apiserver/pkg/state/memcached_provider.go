@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/memcachier/mc"
 )
@@ -12,7 +13,11 @@ type MemcachedStateProvider struct {
 	cache *mc.Client
 }
 
-func NewMemcachedStateProvider(servers string, username string, password string) (*MemcachedStateProvider, error) {
+func NewMemcachedStateProvider(servers string, username string, argPassword string) (*MemcachedStateProvider, error) {
+	password := argPassword
+	if argPassword == "" && os.Getenv("MEMCACHED_PASSWORD") != "" {
+		password = os.Getenv("MEMCACHED_PASSWORD")
+	}
 	cache := mc.NewMC(servers, username, password)
 	_, err := cache.Set("ok", "ok", 0, 10, 0)
 	if err != nil {

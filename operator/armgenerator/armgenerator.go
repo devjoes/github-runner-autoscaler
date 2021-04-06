@@ -598,6 +598,18 @@ const JsonApiServer = `{
 								"protocol": "TCP"
 							}
 						],
+						"livenessProbe": {
+							"httpGet": {
+							"path": "/healthz",
+							"port": 2112
+							}
+						},
+						"readinessProbe": {
+							"httpGet": {
+							"path": "/readyz",
+							"port": 2112
+							}
+						},
 						"env": [
 							{
 								"name": "MEMCACHED_PASSWORD",

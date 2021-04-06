@@ -17,6 +17,7 @@ import (
 	"k8s.io/klog/v2"
 
 	config "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/config"
+	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/health"
 	host "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/host"
 	k8sProvider "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/k8sprovider"
 )
@@ -53,7 +54,7 @@ func main() {
 		klog.Fatal(err)
 	}
 
-	go cmd.initPrometheus()
+	go cmd.initHandlers(conf)
 	testProvider := cmd.makeK8sProvider(h)
 	cmd.Authorization.WithAlwaysAllowGroups("system:unauthenticated")
 	cmd.WithCustomMetrics(testProvider)
@@ -72,7 +73,10 @@ func (a *WorkflowMetricsAdapter) makeK8sProvider(orchestrator *host.Host) provid
 // 	kedaProvider.NewKedaProvider(orchestrator)
 // }
 
-func (a *WorkflowMetricsAdapter) initPrometheus() {
+func (a *WorkflowMetricsAdapter) initHandlers(conf config.Config) {
+	h := health.NewHealth(conf)
+	http.HandleFunc("/readyz", h.Readyz())
+	http.HandleFunc("/livez", h.Livez())
 	http.Handle("/metrics", promhttp.Handler())
 	http.ListenAndServe(":2112", nil)
 }

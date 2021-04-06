@@ -6,7 +6,7 @@ spec:
   name: test123
   namespace: runners
   existingSslCertSecret: cert
-  image: "joeshearn/github-runner-autoscaler-apiserver:custommetrics22"
+  image: "joeshearn/github-runner-autoscaler-apiserver:000028"
 ---
 kind: ScaledActionRunner
 apiVersion: runner.devjoes.com/v1alpha1
@@ -19,7 +19,6 @@ spec:
   owner: JSainsburyPLC
   repo: js-hello
   runner:
-    image: "joeshearn/action-runner-sideloaded-config:000012_163974b6f0d6"
     labels: foo
     limits:
       cpu: "2"
