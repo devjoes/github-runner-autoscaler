@@ -20,8 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//todo: poss get rid of spec.namespace since everything has to be in the same namespace.
-//TODO: poss just use meta.name. or splice spec.name up
 const (
 	testTimeoutSecs          = 60
 	testSarName              = "test-name"

@@ -117,7 +117,6 @@ func testArmResults(ctx context.Context, expectedCreate []bool, testNamespace st
 		if e == nil != expectedCreate[0] {
 			return false
 		}
-		//TODO: more tests
 		e = k8sClient.Get(ctx, types.NamespacedName{Namespace: testNamespace, Name: fmt.Sprintf("%s-cache", testName)}, &memCached)
 		if e == nil != expectedCreate[1] {
 			return false
