@@ -2,7 +2,6 @@ package gitclient
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"k8s.io/klog/v2"
 )
 
 type Status int8
@@ -47,12 +47,11 @@ func (c *Client) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, erro
 	cacheUntil := s.LastRequest.Add(c.cacheWindow)
 	if s.LastValue == nil || len(s.LastValue) == 0 {
 		cacheUntil = s.LastRequest.Add(c.cacheWindowWhenEmpty)
-		fmt.Println("empty")
 	}
 
 	if s.Status != state.Valid || time.Now().After(cacheUntil) {
 		cached = false
-		fmt.Printf("Cache miss %d %s %s %v\n", s.Status, cacheUntil.String(), time.Now().String(), s.LastValue)
+		klog.V(5).Infof("Cache miss %d %s %s %v", s.Status, cacheUntil.String(), time.Now().String(), s.LastValue)
 		jobQueue, err = c.innerClient.GetQueuedJobs(ctx)
 		if err != nil {
 			s.Status = state.Errored
@@ -67,9 +66,9 @@ func (c *Client) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, erro
 			}
 			err = saveErr
 		}
-		fmt.Printf("Cached %v\n", err)
-	} else {
-		fmt.Println("Cache hit")
+		if err != nil {
+			klog.Warningf("Error whilst processing %s %s", c.name, err.Error())
+		}
 	}
 
 	return s.LastValue, err

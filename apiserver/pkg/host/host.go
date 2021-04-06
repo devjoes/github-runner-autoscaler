@@ -3,7 +3,6 @@ package host
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/config"
@@ -11,6 +10,7 @@ import (
 	labeling "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/labeling"
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/state"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/klog/v2"
 )
 
 type Host struct {
@@ -51,13 +51,24 @@ func (h *Host) getClient(wf *config.GithubWorkflowConfig) client.Client {
 	return client.NewClient(&githubClient, key, h.config.CacheWindow, h.config.CacheWindowWhenEmpty, h.stateProvider)
 }
 
+func (h *Host) getClients() ([]client.Client, error) {
+	clients := []client.Client{}
+	wfs := h.config.GetAllWorkflows()
+	for _, wf := range wfs {
+		innerClient := client.NewGitHubClient(wf.Token, wf.Owner, wf.Repository)
+		client := client.NewClient(&innerClient, wf.Name, h.config.CacheWindow, h.config.CacheWindowWhenEmpty, h.stateProvider)
+		clients = append(clients, client)
+	}
+	return clients, nil
+}
+
 func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 	var stateProvider state.IStateProvider
 	var err error
 	if len(conf.MemcachedServers) > 0 {
 		pass := conf.MemcachedPass
 		if conf.MemcachedUser != "" && pass == "" && os.Getenv("MEMCACHED_PASSWORD") != "" {
-			fmt.Println("Getting password from $MEMCACHED_PASSWORD")
+			klog.Info("Getting password from $MEMCACHED_PASSWORD")
 			pass = os.Getenv("MEMCACHED_PASSWORD")
 		}
 		stateProvider, err = state.NewMemcachedStateProvider(conf.MemcachedServers, conf.MemcachedUser, pass)

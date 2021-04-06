@@ -2,9 +2,9 @@ package runnerclient
 
 import (
 	"context"
-	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/klog/v2"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,7 +92,7 @@ func (c *scaledActionRunnerClient) Watch(ctx context.Context, opts metav1.ListOp
 		Do(ctx).
 		Into(&result)
 	if err != nil {
-		fmt.Println(err)
+		klog.Errorf("Error getting watched ScaledActionRunnerList in %s. %s", c.ns, err)
 	}
 	return c.restClient.
 		Get().

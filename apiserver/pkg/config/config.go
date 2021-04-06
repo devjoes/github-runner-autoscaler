@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,6 +16,7 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -139,7 +139,7 @@ func parseDuration(flag *string, value time.Duration) time.Duration {
 	parsed, err := time.ParseDuration(*flag)
 	if err != nil {
 		if *flag != "" {
-			fmt.Printf("Error parsing '%s': %s.\nUsing default: %s\n", *flag, err.Error(), value)
+			klog.Warningf("Error parsing '%s': %s. Using default: %s", *flag, err.Error(), value)
 		}
 		return value
 	}
@@ -166,7 +166,7 @@ func (c *Config) SetupConfig(params ...interface{}) error {
 	}
 
 	output, _ := json.Marshal(c)
-	fmt.Printf("%s\n", string(output))
+	klog.Info("Config: %s", string(output))
 
 	return c.initWorkflows(params)
 }

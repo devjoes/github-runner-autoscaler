@@ -1,8 +1,6 @@
 package k8sprovider
 
 import (
-	"fmt"
-
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/config"
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/host"
 	labeling "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/labeling"
@@ -36,7 +34,7 @@ type workflowQueueProvider struct {
 }
 
 func NewProvider(orchestrator *host.Host) provider.CustomMetricsProvider {
-	klog.Infof("NewProvider")
+	klog.V(5).Infof("NewProvider")
 	provider := &workflowQueueProvider{
 		orchestrator: orchestrator,
 	}
@@ -59,11 +57,11 @@ func (p *workflowQueueProvider) valueFor(info provider.CustomMetricInfo, name ty
 	var err error
 	if metricSelector == nil {
 		metricSelector, err = labels.Parse(info.Metric)
-		fmt.Println(err)
+		if err != nil {
+			klog.Warningf("Invalid selector '%s' in %s. %s", info.Metric, name.String(), err.Error())
+		}
 	}
-	fmt.Println(metricSelector)
 	total, lbls, wf, err := p.orchestrator.QueryMetric(name.Name, metricSelector)
-	fmt.Println(total)
 	if err != nil && err.Error() == host.MetricErrNotFound {
 		return resource.Quantity{}, nil, nil, provider.NewMetricNotFoundForError(info.GroupResource, info.Metric, name.Name)
 	}
@@ -73,49 +71,43 @@ func (p *workflowQueueProvider) valueFor(info provider.CustomMetricInfo, name ty
 	if err != nil {
 		return resource.Quantity{}, wf, nil, err
 	}
-	// if total == 0 {
-	// 	return resource.Quantity{}, nil, provider.NewMetricNotFoundForSelectorError(info.GroupResource, info.Metric, name.Name, metricSelector)
-	// }
+
 	promLabels = append([]string{name.String(), metricSelector.String()}, promLabels...)
 	scaledTotal := int(wf.Scaling.GetOutput(int32(total)))
 	//TODO: Get the labels out of QueryMetric, maybe move all this instrumentation stuff in to one place
-	fmt.Println(promLabels)
+
 	guageFilteredQueueLength.WithLabelValues(promLabels...).Set(float64(total))
 	guageFilteredScaledQueueLength.WithLabelValues(promLabels...).Set(float64(scaledTotal))
 	return *resource.NewQuantity(int64(scaledTotal), resource.DecimalSI), wf, allLabels, nil
 }
 
 func (p *workflowQueueProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
-
-	fmt.Printf("GetMetricByName '%s/%s' '%s' '%s' '%v'\n", name.Namespace, name.Name, info.Metric, info.String(), metricSelector)
+	klog.V(5).Infof("GetMetricByName '%s/%s' '%s' '%s' '%s'", name.Namespace, name.Name, info.Metric, info.String(), metricSelector.String())
 	var err error
 	selector := metricSelector
 	if metricSelector.String() == "" && info.Metric != "*" {
 		selector, err = labels.Parse(info.Metric)
 		if err != nil {
+			klog.Warningf("Invalid selector '%s' in %s. %s", info.Metric, name.String(), err.Error())
 			return nil, err
 		}
 	}
-	fmt.Println(selector)
 	value, wf, lbls, err := p.valueFor(info, name, selector)
 
-	fmt.Printf("%v %v %v\n", value, wf, err)
 	if err != nil {
 		if err.Error() == host.MetricErrNotFound {
+			klog.Warningf("Metric not found with %s %s %s", name, info.String(), selector.String())
 			return nil, errors.NewNotFound(external_metrics.Resource("GithubWorkflowConfig"), name.Name)
 		}
-		fmt.Println(err.Error())
+		klog.Warningf("Error getting metric with %s %s %s. %s", name, info.String(), selector.String(), err.Error())
 		return nil, errors.NewBadRequest("Error getting metric")
 	}
 	metric := metricFor(value, *wf, lbls)
-
-	fmt.Println(metric)
 	return metric, err
 }
 
 func (p *workflowQueueProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
-	fmt.Println("GetMetricBySelector")
-	fmt.Printf("GetMetricBySelector %s %v %v\n", namespace, info, metricSelector)
+	klog.V(5).Infof("GetMetricBySelector %s %s %s", namespace, info.Metric, metricSelector.String())
 
 	metrics := custom_metrics.MetricValueList{}
 	names, err := p.orchestrator.GetAllMetricNames(namespace)
@@ -137,11 +129,11 @@ func (p *workflowQueueProvider) GetMetricBySelector(namespace string, selector l
 }
 
 func (p *workflowQueueProvider) ListAllMetrics() []provider.CustomMetricInfo {
-	fmt.Println("ListAllMetrics")
+	klog.V(5).Info("ListAllMetrics")
 	infos := make(map[provider.CustomMetricInfo]struct{})
 	metricData, err := p.orchestrator.GetAllMetricNames("")
 	if err != nil {
-		klog.Error(err)
+		klog.Errorf("Error listing all metrics. %s", err)
 	}
 	for _, name := range metricData {
 		infos[provider.CustomMetricInfo{Metric: name, Namespaced: true}] = struct{}{}
@@ -150,7 +142,6 @@ func (p *workflowQueueProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	for info := range infos {
 		metrics = append(metrics, info)
 	}
-	fmt.Println(metrics)
 	return metrics
 }
 

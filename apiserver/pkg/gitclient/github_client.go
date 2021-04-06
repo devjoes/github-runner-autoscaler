@@ -4,10 +4,10 @@ package gitclient
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/google/go-github/v33/github"
 	"golang.org/x/oauth2"
+	"k8s.io/klog/v2"
 )
 
 type IStatelessClient interface {
@@ -52,8 +52,9 @@ func getExtraWfInfo(resp *github.Response) map[int64]workflowRun {
 	wfr := workflowRuns{}
 	body := resp.Body
 	err := json.NewDecoder(body).Decode(&wfr)
-	fmt.Println(err)
-	fmt.Println(wfr)
+	if err != nil {
+		klog.Warningf("Error unmarshalling %s to workflowRuns. %s", body, err.Error())
+	}
 	wfrMap := map[int64]workflowRun{}
 	for _, r := range wfr.WorkflowRuns {
 		wfrMap[*r.ID] = *r

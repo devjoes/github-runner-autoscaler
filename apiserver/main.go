@@ -35,7 +35,7 @@ func main() {
 	cmd := &WorkflowMetricsAdapter{}
 
 	cmd.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(apiserver.Scheme))
-	cmd.OpenAPIConfig.Info.Title = "github-workflow-metrics-adapter" //TODO: sort naming out
+	cmd.OpenAPIConfig.Info.Title = "github-workflow-metrics-adapter"
 	cmd.OpenAPIConfig.Info.Version = "1.0.0"
 
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
