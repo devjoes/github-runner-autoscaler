@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/config"
@@ -51,17 +52,6 @@ func (h *Host) getClient(wf *config.GithubWorkflowConfig) client.Client {
 	return client.NewClient(&githubClient, key, h.config.CacheWindow, h.config.CacheWindowWhenEmpty, h.stateProvider)
 }
 
-func (h *Host) getClients() ([]client.Client, error) {
-	clients := []client.Client{}
-	wfs := h.config.GetAllWorkflows()
-	for _, wf := range wfs {
-		innerClient := client.NewGitHubClient(wf.Token, wf.Owner, wf.Repository)
-		client := client.NewClient(&innerClient, wf.Name, h.config.CacheWindow, h.config.CacheWindowWhenEmpty, h.stateProvider)
-		clients = append(clients, client)
-	}
-	return clients, nil
-}
-
 func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 	var stateProvider state.IStateProvider
 	var err error
@@ -82,6 +72,16 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 	h := Host{
 		config:        conf,
 		stateProvider: stateProvider,
+	}
+	for _, wf := range h.config.GetAllWorkflows() {
+		c := h.getClient(&wf)
+		jobs, err := c.GetQueuedJobs(context.Background())
+		name := fmt.Sprintf("%s/%s (%s/%s)", wf.Namespace, wf.Name, wf.Owner, wf.Repository)
+		if err != nil {
+			klog.Errorf("Error whilst getting jobs for %s: %s", name, err.Error())
+			return nil, err
+		}
+		klog.Info("Initialized %s: %d jobs", name, len(jobs))
 	}
 	return &h, nil
 }
