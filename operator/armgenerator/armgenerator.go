@@ -96,6 +96,10 @@ func GenerateMemcachedResources(c *runnerv1alpha1.ActionRunnerMetrics) ([]client
 
 	if c.Spec.ExistingMemcacheCredsSecret == "" {
 		secret := v1.Secret{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Secret",
+				APIVersion: "apps/v1",
+			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        name,
 				Namespace:   c.Spec.Namespace,

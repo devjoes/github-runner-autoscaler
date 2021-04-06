@@ -73,10 +73,15 @@ func (r *ActionRunnerMetricsReconciler) Reconcile(ctx context.Context, req ctrl.
 	objs = append(objs, armgenerator.GenerateAuthTrigger(metrics)...)
 	deploy := func(toDeploy []client.Object, preReqsOnly bool) (bool, error) {
 		c := false
-		for _, o := range toDeploy {
+		for i, o := range toDeploy {
 			k := o.GetObjectKind().GroupVersionKind().Kind
+			if k == "" || k == "ServiceAccount" {
+				fmt.Printf("%s %d", k, i)
+			}
+			fmt.Printf("\nFOOOOOOO '%s' %s %v\n", k, o.GetName(), o)
 			isPreReq := k == "Secret" || k == "ServiceAccount"
-			if preReqsOnly != isPreReq {
+			alreadyCreated := (k == "" && o.GetResourceVersion() != "")
+			if preReqsOnly != isPreReq || alreadyCreated {
 				continue
 			}
 			objChanged, e := r.CreateUpdateOrReplace(ctx, log, metrics, o)
@@ -106,9 +111,12 @@ func (r *ActionRunnerMetricsReconciler) CreateUpdateOrReplace(ctx context.Contex
 		log.Info(fmt.Sprintf(msg, label))
 	}
 	old := unstructured.Unstructured{}
+	gvk := obj.GetObjectKind().GroupVersionKind()
+
+	old.SetGroupVersionKind(gvk)
 	ctrl.SetControllerReference(crd, obj, r.Scheme)
-	old.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
-	err := r.Client.Get(ctx, client.ObjectKeyFromObject(obj), &old)
+	key := client.ObjectKeyFromObject(obj)
+	err := r.Client.Get(ctx, key, &old)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return false, err

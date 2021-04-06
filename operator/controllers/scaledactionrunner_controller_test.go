@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -22,7 +23,9 @@ import (
 //todo: poss get rid of spec.namespace since everything has to be in the same namespace.
 //TODO: poss just use meta.name. or splice spec.name up
 const (
+	testTimeoutSecs          = 60
 	testSarName              = "test-name"
+	testSarImage             = "foo"
 	testSarNamespace         = "test-sar-namespace"
 	testSarMaxRunners        = 2
 	testSarMinRunners        = 0
@@ -39,6 +42,11 @@ const (
 
 	testSarWorkVolumeSizeGigs = "123G"
 )
+
+var annotations map[string]string = map[string]string{
+	"OverrideMetricsName":      "testname",
+	"OverrideMetricsNamespace": "testns",
+}
 
 var _ = Describe("ScaledActionRunner controller", func() {
 	Context("ScaledActionRunner CRD", func() {
@@ -79,7 +87,8 @@ var _ = Describe("ScaledActionRunner controller", func() {
 				Expect(*so.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior.ScaleUp.StabilizationWindowSeconds).To(BeEquivalentTo(testSarStabalizationWindowSecs))
 				Expect(so.Spec.ScaleTargetRef.Name).To(Equal(ss.Name))
 				Expect(so.Spec.Triggers[0].Type).To(Equal("metrics-api"))
-				Expect(strings.HasSuffix(so.Spec.Triggers[0].Metadata["url"], testSarNamespace+"/"+testSarName)).To(BeTrue())
+				fmt.Println(so.Spec.Triggers[0].Metadata["url"])
+				Expect(strings.Contains(so.Spec.Triggers[0].Metadata["url"], testSarNamespace+"/Scaledactionrunners/"+testSarName+"/*")).To(BeTrue())
 				return true
 			})
 		})
@@ -116,7 +125,8 @@ var _ = Describe("ScaledActionRunner controller", func() {
 				Expect(*so.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior.ScaleUp.StabilizationWindowSeconds).To(Not(BeEquivalentTo(testSarStabalizationWindowSecs)))
 				Expect(so.Spec.ScaleTargetRef.Name).To(Equal(ss.Name))
 				Expect(so.Spec.Triggers[0].Type).To(Equal("metrics-api"))
-				Expect(strings.Contains(so.Spec.Triggers[0].Metadata["url"], testSarNamespace+"/"+testSarName)).To(BeTrue())
+				fmt.Println(so.Spec.Triggers[0].Metadata["url"])
+				Expect(strings.Contains(so.Spec.Triggers[0].Metadata["url"], testSarNamespace+"/Scaledactionrunners/"+testSarName+"/*")).To(BeTrue())
 				return true
 			})
 		})
@@ -128,7 +138,7 @@ var _ = Describe("ScaledActionRunner controller", func() {
 			Eventually(func() bool {
 				return k8sClient.Get(ctx, nsName, &appsv1.StatefulSet{}) == nil &&
 					k8sClient.Get(ctx, nsName, &keda.ScaledObject{}) == nil
-			}, time.Minute, time.Second).Should(BeTrue())
+			}, testTimeoutSecs*time.Second, time.Second).Should(BeTrue())
 		})
 
 	})
@@ -145,7 +155,7 @@ func testSarResults(ctx context.Context, test func(*appsv1.StatefulSet, *keda.Sc
 			return false
 		}
 		return test(&sSet, &sObj)
-	}, time.Minute, time.Second).Should(BeTrue())
+	}, testTimeoutSecs*time.Second, time.Second).Should(BeTrue())
 }
 
 func createTestScaledActionRunner(ctx context.Context, k8sClient client.Client) (*runnerv1alpha1.ScaledActionRunner, []corev1.Secret) {
@@ -154,8 +164,9 @@ func createTestScaledActionRunner(ctx context.Context, k8sClient client.Client) 
 	var filesystem corev1.PersistentVolumeMode = "Filesystem"
 	runner := runnerv1alpha1.ScaledActionRunner{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      testSarName,
-			Namespace: testSarNamespace,
+			Name:        testSarName,
+			Namespace:   testSarNamespace,
+			Annotations: annotations,
 		},
 		Spec: runnerv1alpha1.ScaledActionRunnerSpec{
 			MaxRunners:        testSarMaxRunners,
@@ -165,7 +176,7 @@ func createTestScaledActionRunner(ctx context.Context, k8sClient client.Client) 
 			Owner:             testSarOwner,
 			Repo:              testSarRepo,
 			Runner: &runnerv1alpha1.Runner{
-				Image:  testImage,
+				Image:  testSarImage,
 				Labels: testSarRunnerLabels,
 				Requests: &map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceCPU:    resource.MustParse(testSarRequests + "m"),
@@ -200,6 +211,10 @@ func createTestScaledActionRunner(ctx context.Context, k8sClient client.Client) 
 	var secrets []corev1.Secret
 	for _, s := range append(strings.Split(testSarRunnerSecrets, ","), testSarGithubTokenSecret) {
 		sec := corev1.Secret{
+			TypeMeta: v1.TypeMeta{
+				Kind:       "Secret",
+				APIVersion: "apps/v1",
+			},
 			ObjectMeta: v1.ObjectMeta{
 				Namespace:   testSarNamespace,
 				Name:        s,
@@ -224,8 +239,9 @@ func updateTestScaledActionRunner(ctx context.Context, k8sClient client.Client, 
 	var filesystem corev1.PersistentVolumeMode = "Filesystem"
 	runner := runnerv1alpha1.ScaledActionRunner{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      testSarName,
-			Namespace: testSarNamespace,
+			Name:        testSarName,
+			Namespace:   testSarNamespace,
+			Annotations: annotations,
 		},
 		Spec: runnerv1alpha1.ScaledActionRunnerSpec{
 			MaxRunners:        1,
@@ -235,7 +251,7 @@ func updateTestScaledActionRunner(ctx context.Context, k8sClient client.Client, 
 			Owner:             reverse(testSarOwner),
 			Repo:              reverse(testSarRepo),
 			Runner: &runnerv1alpha1.Runner{
-				Image:  reverse(testImage),
+				Image:  reverse(testSarImage),
 				Labels: reverse(testSarRunnerLabels),
 				Requests: &map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceCPU:    resource.MustParse(reverse(testSarRequests) + "m"),
@@ -267,6 +283,10 @@ func updateTestScaledActionRunner(ctx context.Context, k8sClient client.Client, 
 	}
 	for _, s := range append(strings.Split(testSarRunnerSecrets, ","), testSarGithubTokenSecret) {
 		sec := corev1.Secret{
+			TypeMeta: v1.TypeMeta{
+				Kind:       "Secret",
+				APIVersion: "apps/v1",
+			},
 			ObjectMeta: v1.ObjectMeta{
 				Namespace:   testSarNamespace,
 				Name:        reverse(s),

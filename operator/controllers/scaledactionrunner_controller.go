@@ -70,17 +70,6 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	metrics, err := r.GetActionRunnerMetrics(ctx, log)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	metricsEndpoint := fmt.Sprintf("%s.%s.svc", metrics.Spec.Name, metrics.Spec.Namespace)
-	//TODO: Parse labels
-	//TODO: Is there a "match anything selector"?
-	selector := "*"
-	metricsUrl := fmt.Sprintf("https://%s/apis/custom.metrics.k8s.io/v1beta1/namespaces/%s/Scaledactionrunners/%s/%s", metricsEndpoint, req.Namespace, req.Name, selector)
-
 	if runner == nil {
 		// Deleted
 		e1 := r.deleteDependant(ctx, log, req, &keda.ScaledObject{})
@@ -94,8 +83,29 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
+	var metricsNamespace, metricsName string
+	if runner.Annotations != nil {
+		metricsName = runner.Annotations["OverrideMetricsName"]
+		metricsNamespace = runner.Annotations["OverrideMetricsNamespace"]
+	}
+
+	if metricsName == "" || metricsNamespace == "" {
+		metrics, err := r.GetActionRunnerMetrics(ctx, log)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		metricsName = metrics.Spec.Name
+		metricsNamespace = metrics.Spec.Namespace
+	}
+
+	metricsEndpoint := fmt.Sprintf("%s.%s.svc", metricsName, metricsNamespace)
+	//TODO: Parse labels
+	//TODO: Is there a "match anything selector"?
+	selector := "*"
+	metricsUrl := fmt.Sprintf("https://%s/apis/custom.metrics.k8s.io/v1beta1/namespaces/%s/Scaledactionrunners/%s/%s", metricsEndpoint, req.Namespace, req.Name, selector)
+
 	setModified, setErr := r.syncStatefulSet(ctx, log, runner)
-	scaledObjectModified, objErr := r.syncScaledObject(ctx, log, runner, metricsUrl, metrics.Spec.Name)
+	scaledObjectModified, objErr := r.syncScaledObject(ctx, log, runner, metricsUrl, metricsName)
 	if setErr != nil {
 		return ctrl.Result{}, setErr
 	}
@@ -191,6 +201,7 @@ func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log
 			log.Error(err, "errored whilst diffing objects")
 		}
 		log.Info("differences", "changes", changes)
+		updatedSo.ResourceVersion = so.ResourceVersion
 		err = r.Update(ctx, updatedSo)
 		if err != nil {
 			log.Error(err, "Failed to update ScaledObject "+so.Name)

@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	testNamespace                   = "testns"
 	testName                        = "testname"
+	testArmImage                    = "foo"
 	testArmReplicas                 = 3
 	testArmCacheWindowSecs          = 123
 	testArmCacheWindowWhenEmptySecs = 234
@@ -32,39 +32,54 @@ var _ = Describe("ActionRunnerMetrics controller", func() {
 		ctx := context.Background()
 		var arm *runnerv1alpha1.ActionRunnerMetrics
 		var version string
-		It("Should set up dependant resources when created", func() {
-			Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testNamespace}})).Should(Succeed())
-			arm = getRunner(true, true, true)
-			Expect(k8sClient.Create(ctx, arm)).Should(Succeed())
-			testArmResults(ctx, []bool{true, true, true}, func(dep, mc *appsv1.Deployment, auth *keda.ClusterTriggerAuthentication) bool {
-				version = dep.ResourceVersion
-				Expect(dep.Name).To(Equal(arm.Spec.Name))
-				//Expect(mc.Name).To(Equal(arm.ObjectMeta.Name + "-cache"))
-				//Expect(auth.Name).To(Equal(arm.ObjectMeta.Name))
-				Expect(dep.Namespace).To(Equal(arm.Spec.Namespace))
-				//Expect(mc.Namespace).To(Equal(arm.ObjectMeta.Namespace))
-				//Expect(auth.Namespace).To(Equal(arm.ObjectMeta.Namespace))
-				return true
+		ns := "testns"
+		testCreation := func(createApiServer, createMemcached, createTriggerAuth bool, testNamespace string, msg string) {
+			It("Should set up dependant resources when created"+msg, func() {
+				Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testNamespace}})).Should(Succeed())
+				arm = getRunner(createApiServer, createMemcached, createTriggerAuth, testNamespace)
+				k8sClient.DeleteAllOf(ctx, &runnerv1alpha1.ActionRunnerMetrics{})
+				k8sClient.DeleteAllOf(ctx, &keda.ClusterTriggerAuthentication{})
+				Expect(k8sClient.Create(ctx, arm)).Should(Succeed())
+				testArmResults(ctx, []bool{createApiServer, createMemcached, createTriggerAuth}, testNamespace, func(dep *appsv1.Deployment, mc *appsv1.StatefulSet, auth *keda.ClusterTriggerAuthentication) bool {
+					version = dep.ResourceVersion
+					if createApiServer {
+						Expect(dep.Name).To(Equal(arm.Spec.Name))
+						Expect(dep.Namespace).To(Equal(arm.Spec.Namespace))
+					}
+					if createMemcached {
+						Expect(mc.Name).To(Equal(arm.Spec.Name + "-cache"))
+						Expect(mc.Namespace).To(Equal(arm.Spec.Namespace))
+					}
+					if createTriggerAuth {
+						Expect(auth.Name).To(Equal(arm.Spec.Name))
+						Expect(auth.Namespace).To(Equal(""))
+					}
+					return true
+				})
 			})
-		})
+		}
+		testCreation(true, true, true, ns, "")
 		It("Should delete and recreate dependant resources when updated", func() {
 			Expect(k8sClient.Update(ctx, arm)).Should(Succeed())
 			secs := 0
-			testArmResults(ctx, []bool{true, true, true}, func(dep, mc *appsv1.Deployment, auth *keda.ClusterTriggerAuthentication) bool {
+			testArmResults(ctx, []bool{true, true, true}, ns, func(dep *appsv1.Deployment, mc *appsv1.StatefulSet, auth *keda.ClusterTriggerAuthentication) bool {
 				Expect(dep.ResourceVersion).To(Equal(version))
 				secs++
 				return secs >= 5
 			})
 			arm.Spec.Image = fmt.Sprintf("different_%s", arm.Spec.Image)
 			Expect(k8sClient.Update(ctx, arm)).Should(Succeed())
-			testArmResults(ctx, []bool{true, true, true}, func(dep, mc *appsv1.Deployment, auth *keda.ClusterTriggerAuthentication) bool {
+			testArmResults(ctx, []bool{true, true, true}, ns, func(dep *appsv1.Deployment, mc *appsv1.StatefulSet, auth *keda.ClusterTriggerAuthentication) bool {
 				return dep.ResourceVersion != version
 			})
 		})
+		testCreation(true, false, false, "testns1", " (only api server)")
+		testCreation(false, true, false, "testns2", " (only memcached)")
+		testCreation(false, false, true, "testns3", " (only trigger auth)")
 	})
 })
 
-func getRunner(createApiServer bool, createMemcached bool, createAuthentication bool) *runnerv1alpha1.ActionRunnerMetrics {
+func getRunner(createApiServer bool, createMemcached bool, createAuthentication bool, testNamespace string) *runnerv1alpha1.ActionRunnerMetrics {
 	ns := make([]string, 0)
 	if testNamespaces != "" {
 		ns = strings.Split(testNamespaces, ",")
@@ -78,7 +93,7 @@ func getRunner(createApiServer bool, createMemcached bool, createAuthentication 
 		Spec: runnerv1alpha1.ActionRunnerMetricsSpec{
 			Namespace:             testNamespace,
 			Name:                  testName,
-			Image:                 testImage,
+			Image:                 testArmImage,
 			Replicas:              testArmReplicas,
 			CacheWindow:           testArmCacheWindowSecs,
 			CacheWindowWhenEmpty:  testArmCacheWindowWhenEmptySecs,
@@ -92,20 +107,26 @@ func getRunner(createApiServer bool, createMemcached bool, createAuthentication 
 	}
 }
 
-func testArmResults(ctx context.Context, expectedCreate []bool, test func(*appsv1.Deployment, *appsv1.Deployment, *keda.ClusterTriggerAuthentication) bool) {
+func testArmResults(ctx context.Context, expectedCreate []bool, testNamespace string, test func(*appsv1.Deployment, *appsv1.StatefulSet, *keda.ClusterTriggerAuthentication) bool) {
 	Eventually(func() bool {
 		dep := appsv1.Deployment{}
-		memCached := appsv1.Deployment{}
+		memCached := appsv1.StatefulSet{}
 		auth := keda.ClusterTriggerAuthentication{}
-		nsName := types.NamespacedName{Name: "main"}
-		e1 := k8sClient.Get(ctx, nsName, &dep)
-		//TODO: more tests
-		//e2 := k8sClient.Get(ctx, types.NamespacedName{Namespace: "main"space, Name: fmt.Sprintf("%s-cache", "main")}, &memCached)
-		//e3 := k8sClient.Get(ctx, nsName, &auth)
-		if e1 == nil != expectedCreate[0] {
-			// || e2 == nil != expectedCreate[1] || e3 == nil != expectedCreate[2] {
+		nsName := types.NamespacedName{Name: testName, Namespace: testNamespace}
+		e := k8sClient.Get(ctx, nsName, &dep)
+		if e == nil != expectedCreate[0] {
 			return false
 		}
+		//TODO: more tests
+		e = k8sClient.Get(ctx, types.NamespacedName{Namespace: testNamespace, Name: fmt.Sprintf("%s-cache", testName)}, &memCached)
+		if e == nil != expectedCreate[1] {
+			return false
+		}
+		e = k8sClient.Get(ctx, types.NamespacedName{Namespace: "keda", Name: testName}, &auth)
+		if e == nil != expectedCreate[2] {
+			return false
+		}
+
 		return test(&dep, &memCached, &auth)
-	}, time.Minute, time.Second).Should(BeTrue())
+	}, testTimeoutSecs*time.Second, time.Second).Should(BeTrue())
 }
