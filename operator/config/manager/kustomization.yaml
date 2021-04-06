@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: joeshearn/github-runner-autoscaler-operator
-  newTag: "000065"
+  newTag: master

@@ -6,7 +6,7 @@ spec:
   name: test123
   namespace: runners
   existingSslCertSecret: cert
-  image: "joeshearn/github-runner-autoscaler-apiserver:000028"
+  image: "joeshearn/github-runner-autoscaler-apiserver:master"
 ---
 kind: ScaledActionRunner
 apiVersion: runner.devjoes.com/v1alpha1

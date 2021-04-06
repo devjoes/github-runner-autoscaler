@@ -3,12 +3,14 @@ package host
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/config"
 	client "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/gitclient"
 	labeling "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/labeling"
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/state"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/klog/v2"
 )
 
 type Host struct {
@@ -64,7 +66,13 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 	var stateProvider state.IStateProvider
 	var err error
 	if len(conf.MemcachedServers) > 0 {
-		stateProvider, err = state.NewMemcachedStateProvider(conf.MemcachedServers, conf.MemcachedUser, conf.MemcachedPass)
+		attempts := 0
+		for err != nil && attempts < 120 {
+			stateProvider, err = state.NewMemcachedStateProvider(conf.MemcachedServers, conf.MemcachedUser, conf.MemcachedPass)
+			attempts++
+			klog.Warningf("Attempt %d - Error connecting to memcached: %s", attempts, err.Error())
+			time.Sleep(time.Second)
+		}
 		if err != nil {
 			return nil, err
 		}

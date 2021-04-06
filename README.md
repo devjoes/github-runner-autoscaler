@@ -45,3 +45,15 @@ EOF
 - TODO: Deploy resources in corect order?
 - TODO: Make runners close session on shutdown
 - TODO: Have option to not output labels - could be sensitive
+
+# Cleanup
+
+kubectl delete -f ../crs.yaml
+sleep 3s
+make undeploy
+
+for node in `kubectl get nodes -o yaml | grep -oP '10\.99\.\d+\.\d+' | sort | uniq`; do
+ssh setup@$node "sudo bash -c \"docker image ls | grep joeshearn | grep -Po '^\S+\s+\S+' | sed -E 's/\s+/:/g' | xargs docker image rm -f \""
+done
+
+make deploy IMG=joeshearn/github-runner-autoscaler-operator:master
