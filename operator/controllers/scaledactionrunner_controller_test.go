@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -85,7 +84,6 @@ var _ = Describe("ScaledActionRunner controller", func() {
 				Expect(*so.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior.ScaleUp.StabilizationWindowSeconds).To(BeEquivalentTo(testSarStabalizationWindowSecs))
 				Expect(so.Spec.ScaleTargetRef.Name).To(Equal(ss.Name))
 				Expect(so.Spec.Triggers[0].Type).To(Equal("metrics-api"))
-				fmt.Println(so.Spec.Triggers[0].Metadata["url"])
 				Expect(strings.Contains(so.Spec.Triggers[0].Metadata["url"], testSarNamespace+"/Scaledactionrunners/"+testSarName+"/*")).To(BeTrue())
 				return true
 			})
@@ -123,7 +121,6 @@ var _ = Describe("ScaledActionRunner controller", func() {
 				Expect(*so.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior.ScaleUp.StabilizationWindowSeconds).To(Not(BeEquivalentTo(testSarStabalizationWindowSecs)))
 				Expect(so.Spec.ScaleTargetRef.Name).To(Equal(ss.Name))
 				Expect(so.Spec.Triggers[0].Type).To(Equal("metrics-api"))
-				fmt.Println(so.Spec.Triggers[0].Metadata["url"])
 				Expect(strings.Contains(so.Spec.Triggers[0].Metadata["url"], testSarNamespace+"/Scaledactionrunners/"+testSarName+"/*")).To(BeTrue())
 				return true
 			})

@@ -43,6 +43,9 @@ type ActionRunnerMetricsReconciler struct {
 // +kubebuilder:rbac:groups=runner.devjoes.com,resources=actionrunnermetrics,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=runner.devjoes.com,resources=actionrunnermetrics/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=runner.devjoes.com,resources=actionrunnermetrics/finalizers,verbs=update
+// +kubebuilder:rbac:groups=apps,resources=statefulsets;deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=secrets;serviceaccounts;services;configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -73,12 +76,8 @@ func (r *ActionRunnerMetricsReconciler) Reconcile(ctx context.Context, req ctrl.
 	objs = append(objs, armgenerator.GenerateAuthTrigger(metrics)...)
 	deploy := func(toDeploy []client.Object, preReqsOnly bool) (bool, error) {
 		c := false
-		for i, o := range toDeploy {
+		for _, o := range toDeploy {
 			k := o.GetObjectKind().GroupVersionKind().Kind
-			if k == "" || k == "ServiceAccount" {
-				fmt.Printf("%s %d", k, i)
-			}
-			fmt.Printf("\nFOOOOOOO '%s' %s %v\n", k, o.GetName(), o)
 			isPreReq := k == "Secret" || k == "ServiceAccount"
 			alreadyCreated := (k == "" && o.GetResourceVersion() != "")
 			if preReqsOnly != isPreReq || alreadyCreated {

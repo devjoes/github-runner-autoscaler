@@ -50,7 +50,11 @@ type ScaledActionRunnerReconciler struct {
 // +kubebuilder:rbac:groups=runner.devjoes.com,resources=scaledactionrunners/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=runner.devjoes.com,resources=scaledactionrunners/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;
+// +kubebuilder:rbac:groups=core,resources=secrets;namespaces;configmaps,verbs=get;watch;list;
+// +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=get;watch;list;
+// +kubebuilder:rbac:groups=keda.sh,resources=clustertriggerauthentications;scaledobjects,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
+//TODO: Review this ^ (seems a bit powerful)
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -199,7 +203,7 @@ func (r *ScaledActionRunnerReconciler) syncScaledObject(ctx context.Context, log
 		if err != nil {
 			log.Error(err, "errored whilst diffing objects")
 		}
-		log.Info("differences", "changes", changes)
+		log.Info("Differences", "changes", changes)
 		updatedSo.ResourceVersion = so.ResourceVersion
 		err = r.Update(ctx, updatedSo)
 		if err != nil {
@@ -336,7 +340,7 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 		if err != nil {
 			log.Error(err, "errored whilst diffing objects")
 		}
-		log.Info("differences", "changes", changes)
+		log.Info("Differences", "changes", changes)
 
 		key := client.ObjectKeyFromObject(existingSs)
 		err = r.Delete(ctx, existingSs)

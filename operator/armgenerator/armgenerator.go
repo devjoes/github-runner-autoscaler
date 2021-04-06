@@ -133,10 +133,7 @@ func getPass() string {
 
 func generateExternalMetricsDeployment(c *runnerv1alpha1.ActionRunnerMetrics, ls map[string]string) *appsv1.Deployment {
 	var dep appsv1.Deployment
-	err := yaml.Unmarshal([]byte(JsonApiServer), &dep)
-	if err != nil {
-		fmt.Println(err)
-	}
+	yaml.Unmarshal([]byte(JsonApiServer), &dep)
 	dep.Name = c.Spec.Name
 	dep.Spec.Template.Name = c.Spec.Name
 	dep.Labels = ls
