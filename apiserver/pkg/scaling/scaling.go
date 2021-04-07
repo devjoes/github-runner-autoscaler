@@ -35,24 +35,24 @@ func logistic(c float64, a float64, k float64, x float64) float64 {
 
 func (s *Scaling) GetOutput(queueLength int32) int32 {
 	var result int32
-	defer klog.V(10).Infof("Scaling: s.Linear=%f, s.MinWorkers=%f, s.MaxWorkers=%f, s.ScaleFactor=%f.  RESULT=%f", s.Linear, s.MinWorkers, s.MaxWorkers, s.ScaleFactor, &result)
+
 	result = s.MinWorkers
-	if queueLength < 1 {
-		return result
+	if queueLength > 0 {
+		if s.Linear {
+			result = queueLength
+		} else {
+			result = int32(math.Round(logistic(float64(s.MaxWorkers), float64(s.MaxWorkers), s.ScaleFactor, float64(queueLength))))
+		}
+		if result > s.MaxWorkers {
+			result = s.MaxWorkers
+		}
+		if result < s.MinWorkers {
+			result = s.MinWorkers
+		}
+		if result == 0 && queueLength > 0 {
+			result = 1
+		}
 	}
-	if s.Linear {
-		result = queueLength
-	} else {
-		result = int32(math.Round(logistic(float64(s.MaxWorkers), float64(s.MaxWorkers), s.ScaleFactor, float64(queueLength))))
-	}
-	if result > s.MaxWorkers {
-		result = s.MaxWorkers
-	}
-	if result < s.MinWorkers {
-		result = s.MinWorkers
-	}
-	if result == 0 && queueLength > 0 {
-		result = 1
-	}
+	klog.V(10).Infof("Scaling: queueLength=%d s.Linear=%t, s.MinWorkers=%f, s.MaxWorkers=%f, s.ScaleFactor=%f.  RESULT=%f", queueLength, s.Linear, s.MinWorkers, s.MaxWorkers, s.ScaleFactor, result)
 	return result
 }
