@@ -325,13 +325,24 @@ func GenerateAuthTrigger(c *runnerv1alpha1.ActionRunnerMetrics) []client.Object 
 	authTrigger.TypeMeta.SetGroupVersionKind(schema.FromAPIVersionAndKind("keda.sh/v1alpha1", "ClusterTriggerAuthentication"))
 	return []client.Object{&authTrigger}
 }
-
+func GeneratePrometheusServiceMonitor(c *runnerv1alpha1.ActionRunnerMetrics) []client.Object {
+	if c.Spec.PrometheusNamespace == "" {
+		return []client.Object{}
+	}
+	var sm client.Object
+	smJson := JsonServiceMonitor
+	smJson = strings.ReplaceAll(smJson, "sm-name", c.Spec.Name)
+	smJson = strings.ReplaceAll(smJson, "sm-ns-name", c.Spec.PrometheusNamespace)
+	smJson = strings.ReplaceAll(smJson, "api-ns-name", c.Spec.Namespace)
+	json.Unmarshal([]byte(smJson), &sm)
+	return []client.Object{sm}
+}
 func GenerateMetricsApiServer(c *runnerv1alpha1.ActionRunnerMetrics) []client.Object {
 	if !*c.Spec.CreateApiServer {
 		return []client.Object{}
 	}
 	ls := getLabels(c)
-	ls["app"] = "external-metrics-apiserver"
+	ls["app"] = "github-action-apiserver"
 	dep := generateExternalMetricsDeployment(c, ls)
 	dep.TypeMeta.SetGroupVersionKind(schema.FromAPIVersionAndKind("apps/v1", "Deployment"))
 	svc := v1.Service{
@@ -554,24 +565,24 @@ const JsonApiServer = `{
 	"kind": "Deployment",
 	"metadata": {
 		"labels": {
-			"app": "external-metrics-apiserver"
+			"app": "github-action-apiserver"
 		},
-		"name": "external-metrics-apiserver",
+		"name": "github-action-apiserver",
 		"namespace": "runners"
 	},
 	"spec": {
 		"replicas": 2,
 		"selector": {
 			"matchLabels": {
-				"app": "external-metrics-apiserver"
+				"app": "github-action-apiserver"
 			}
 		},
 		"template": {
 			"metadata": {
 				"labels": {
-					"app": "external-metrics-apiserver"
+					"app": "github-action-apiserver"
 				},
-				"name": "external-metrics-apiserver"
+				"name": "github-action-apiserver"
 			},
 			"spec": {
 				"containers": [
@@ -585,7 +596,7 @@ const JsonApiServer = `{
 						],
 						"image": "joeshearn/github-runner-autoscaler-apiserver:000021",
 						"imagePullPolicy": "IfNotPresent",
-						"name": "external-metrics-apiserver",
+						"name": "github-action-apiserver",
 						"ports": [
 							{
 								"containerPort": 6443,
@@ -650,8 +661,8 @@ const JsonApiServer = `{
 				"restartPolicy": "Always",
 				"schedulerName": "default-scheduler",
 				"securityContext": {},
-				"serviceAccount": "external-metrics-apiserver",
-				"serviceAccountName": "external-metrics-apiserver",
+				"serviceAccount": "github-action-apiserver",
+				"serviceAccountName": "github-action-apiserver",
 				"terminationGracePeriodSeconds": 30,
 				"volumes": [
 					{
@@ -670,3 +681,34 @@ const JsonApiServer = `{
 		}
 	}
 }`
+
+const JsonServiceMonitor = `{
+	"apiVersion": "monitoring.coreos.com/v1",
+	"kind": "ServiceMonitor",
+	"metadata": {
+	  "name": "sm-name",
+	  "namespace": "sm-ns-name",
+	  "labels": {
+		"app": "github-action-apiserver",
+		"release": "prometheus"
+	  }
+	},
+	"spec": {
+	  "selector": {
+		"matchLabels": {
+		  "app": "github-action-apiserver"
+		}
+	  },
+	  "namespaceSelector": {
+		"matchNames": [
+		  "api-ns-name"
+		]
+	  },
+	  "endpoints": [
+		{
+		  "port": "metrics",
+		  "interval": "15s"
+		}
+	  ]
+	}
+  }`

@@ -38,7 +38,7 @@ type ActionRunnerMetricsSpec struct {
 	CreateApiServer             *bool         `json:"createApiServer,omitempty"`
 	CreateMemcached             *bool         `json:"createMemcached,omitempty"`
 	CreateAuthentication        *bool         `json:"createAuthentication,omitempty"`
-	EnablePrometheusMetrics     *bool         `json:"enablePrometheusMetrics,omitempty"` //TODO: implement
+	PrometheusNamespace         string        `json:"prometheusNamespace,omitempty"`
 	MemcachedReplicas           int32         `json:"memcachedReplicas,omitempty"`
 	MemcachedImage              string        `json:"memcachedImage,omitempty"`
 	ExistingSslCertSecret       string        `json:"existingSslCertSecret,omitempty"`

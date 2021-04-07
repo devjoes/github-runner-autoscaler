@@ -57,3 +57,4 @@ ssh setup@$node "sudo bash -c \"docker image ls | grep joeshearn | grep -Po '^\S
 done
 
 make deploy IMG=joeshearn/github-runner-autoscaler-operator:master
+kubectl apply -f ../crs.yaml

@@ -7,6 +7,7 @@ spec:
   namespace: runners
   existingSslCertSecret: cert
   image: "joeshearn/github-runner-autoscaler-apiserver:master"
+  prometheusNamespace: default
 ---
 kind: ScaledActionRunner
 apiVersion: runner.devjoes.com/v1alpha1

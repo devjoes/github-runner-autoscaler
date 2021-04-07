@@ -55,8 +55,6 @@ spec:
                 type: boolean
               createMemcached:
                 type: boolean
-              enablePrometheusMetrics:
-                type: boolean
               existingMemcacheCredsSecret:
                 type: string
               existingMemcacheServers:
@@ -84,6 +82,8 @@ spec:
                 items:
                   type: string
                 type: array
+              prometheusNamespace:
+                type: string
               replicas:
                 format: int32
                 type: integer

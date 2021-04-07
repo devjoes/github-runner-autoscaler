@@ -104,11 +104,6 @@ func (in *ActionRunnerMetricsSpec) DeepCopyInto(out *ActionRunnerMetricsSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.EnablePrometheusMetrics != nil {
-		in, out := &in.EnablePrometheusMetrics, &out.EnablePrometheusMetrics
-		*out = new(bool)
-		**out = **in
-	}
 	if in.MemcachedUser != nil {
 		in, out := &in.MemcachedUser, &out.MemcachedUser
 		*out = new(string)
