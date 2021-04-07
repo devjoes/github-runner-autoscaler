@@ -22,6 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/yaml"
+
+	prom "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 )
 
 const CrdKey = "crd_key"
@@ -329,13 +331,15 @@ func GeneratePrometheusServiceMonitor(c *runnerv1alpha1.ActionRunnerMetrics) []c
 	if c.Spec.PrometheusNamespace == "" {
 		return []client.Object{}
 	}
-	var sm client.Object
+	var sm prom.ServiceMonitor
 	smJson := JsonServiceMonitor
 	smJson = strings.ReplaceAll(smJson, "sm-name", c.Spec.Name)
 	smJson = strings.ReplaceAll(smJson, "sm-ns-name", c.Spec.PrometheusNamespace)
 	smJson = strings.ReplaceAll(smJson, "api-ns-name", c.Spec.Namespace)
-	json.Unmarshal([]byte(smJson), &sm)
-	return []client.Object{sm}
+	err := json.Unmarshal([]byte(smJson), &sm)
+	fmt.Println(err)
+	sm.GetObjectKind().SetGroupVersionKind(schema.FromAPIVersionAndKind("monitoring.coreos.com/v1", "ServiceMonitor"))
+	return []client.Object{&sm}
 }
 func GenerateMetricsApiServer(c *runnerv1alpha1.ActionRunnerMetrics) []client.Object {
 	if !*c.Spec.CreateApiServer {

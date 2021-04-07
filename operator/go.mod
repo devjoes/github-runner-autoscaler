@@ -8,6 +8,7 @@ require (
 	github.com/onsi/ginkgo v1.15.2
 	github.com/onsi/gomega v1.11.0
 	github.com/pingcap/errors v0.11.4
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.46.0 // indirect
 	github.com/r3labs/diff v1.1.0
 	github.com/stretchr/testify v1.7.0
 	k8s.io/api v0.20.5

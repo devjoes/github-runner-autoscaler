@@ -33,6 +33,7 @@ import (
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	"github.com/devjoes/github-runner-autoscaler/operator/controllers"
+	prom "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -46,6 +47,7 @@ func init() {
 
 	utilruntime.Must(runnerv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(keda.AddToScheme(scheme))
+	utilruntime.Must(prom.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

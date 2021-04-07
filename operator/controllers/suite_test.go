@@ -34,6 +34,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
+	prom "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -68,6 +69,9 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(cfg).NotTo(BeNil())
 
 	err = keda.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = prom.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = runnerv1alpha1.AddToScheme(scheme.Scheme)

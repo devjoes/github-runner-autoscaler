@@ -20,7 +20,7 @@
 				"--lister-kubeconfig=/home/joe/.kube/config",
 				"--kubeconfig=/home/joe/.kube/config",
 				"--authentication-skip-lookup",
-				"--memcached-servers=test123-cache-0.test123-cache:11211;test123-cache-1.test123-cache:11211"
+				"--memcached-servers=127.0.0.1:11211"
 			]
 		}
 	]
