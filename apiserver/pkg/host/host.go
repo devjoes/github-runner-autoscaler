@@ -41,15 +41,23 @@ func (h *Host) QueryMetric(key string, selector labels.Selector) (int, map[strin
 		return 0, nil, nil, errors.New(MetricErrNotFound)
 	}
 	client := h.getClient(wf)
-	jobs, err := client.GetQueuedJobs(context.Background())
-	filteredJobs, matchedLabels := labeling.FilterBySelector(jobs, wf, selector)
+	ctx := context.Background()
+	jobs, err := client.GetQueuedJobs(ctx)
+	if err != nil {
+		return 0, nil, wf, err
+	}
+	wfInfo, err := client.GetWorkflowInfo(ctx)
+	if err != nil {
+		return 0, nil, wf, err
+	}
+	filteredJobs, matchedLabels := labeling.FilterBySelector(jobs, wf, wfInfo, selector)
 	return len(filteredJobs), matchedLabels, wf, err
 }
 
 func (h *Host) getClient(wf *config.GithubWorkflowConfig) client.Client {
 	githubClient := client.NewGitHubClient(wf.Token, wf.Owner, wf.Repository)
-	key := wf.Name
-	return client.NewClient(&githubClient, key, h.config.CacheWindow, h.config.CacheWindowWhenEmpty, h.stateProvider)
+	gitOwnerRepo := fmt.Sprintf("%s/%s", wf.Owner, wf.Repository)
+	return client.NewClient(&githubClient, wf.Name, gitOwnerRepo, h.config.CacheWindow, h.config.CacheWindowWhenEmpty, h.stateProvider)
 }
 
 func NewHost(conf config.Config, params ...interface{}) (*Host, error) {

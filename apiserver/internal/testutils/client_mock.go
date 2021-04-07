@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/state"
+	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/utils"
 	"github.com/google/go-github/v33/github"
 	"github.com/stretchr/testify/mock"
 )
@@ -35,6 +36,9 @@ func (c *ClientMock) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, 
 }
 func (c *ClientMock) GetState(name string) *state.ClientState { return &c.State }
 func (c *ClientMock) SaveState(state *state.ClientState)      {}
+func (c *ClientMock) GetWorkflowData(ctx context.Context) (*map[int64]utils.WorkflowInfo, error) {
+	return &map[int64]utils.WorkflowInfo{}, nil
+}
 
 const WfIdLabel = "wf_id"
 const JobStatusLabel = "job_status"

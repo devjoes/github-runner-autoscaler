@@ -5,17 +5,22 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
+	"io"
+	"io/ioutil"
+	"sort"
 	"strings"
 
+	utils "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/utils"
 	"github.com/google/go-github/v33/github"
 	"golang.org/x/oauth2"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/klog/v2"
 )
 
 type IStatelessClient interface {
 	GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, error)
 	GetRemainingCreditsForToken(ctx context.Context) (string, string, int, error)
+	GetWorkflowData(ctx context.Context) (*map[int64]utils.WorkflowInfo, error)
 }
 type GithubClient struct {
 	Owner      string
@@ -41,30 +46,6 @@ func NewGitHubClient(token string, owner string, repository string) GithubClient
 		Owner:      owner,
 		Repository: repository,
 	}
-}
-
-type workflowRun struct {
-	ID   *int64  `json:"id,omitempty"`
-	Name *string `json:"name,omitempty"`
-}
-
-func getExtraWfInfo(resp *github.Response) map[int64]workflowRun {
-
-	type workflowRuns struct {
-		TotalCount   *int           `json:"total_count,omitempty"`
-		WorkflowRuns []*workflowRun `json:"workflow_runs,omitempty"`
-	}
-	wfr := workflowRuns{}
-	body := resp.Body
-	err := json.NewDecoder(body).Decode(&wfr)
-	if err != nil {
-		klog.Warningf("Error unmarshalling %s to workflowRuns. %s", body, err.Error())
-	}
-	wfrMap := map[int64]workflowRun{}
-	for _, r := range wfr.WorkflowRuns {
-		wfrMap[*r.ID] = *r
-	}
-	return wfrMap
 }
 
 // func (c *GithubClient) getQueueLengthByStatus(status string, ctx context.Context, cResults chan result) {
@@ -162,4 +143,62 @@ func (c *GithubClient) GetRemainingCreditsForToken(ctx context.Context) (string,
 		return key, name, 0, err
 	}
 	return key, name, limits.Core.Remaining, nil
+}
+
+type workflow struct {
+	Name string `json:"name"`
+	Jobs map[string]struct {
+		RunsOn []string `json:"runs-on"`
+	} `json:"jobs"`
+}
+
+func (c *GithubClient) getLabels(ctx context.Context, path string) ([]string, error) {
+	reader, _, err := c.client.Repositories.DownloadContents(ctx, c.Owner, c.Repository, path, &github.RepositoryContentGetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return c.processWorkflow(reader)
+}
+func (c *GithubClient) processWorkflow(reader io.ReadCloser) ([]string, error) {
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	wf := workflow{}
+	err = yaml.Unmarshal(data, &wf)
+	if err != nil {
+		return nil, err
+	}
+	var runsOn []string
+	for _, j := range wf.Jobs {
+		if j.RunsOn != nil {
+			for _, l := range j.RunsOn {
+				if !utils.ContainsStr(runsOn, l) {
+					runsOn = append(runsOn, l)
+				}
+			}
+		}
+	}
+	sort.Strings(runsOn)
+	return runsOn, nil
+}
+func (c *GithubClient) GetWorkflowData(ctx context.Context) (*map[int64]utils.WorkflowInfo, error) {
+	results := make(map[int64]utils.WorkflowInfo)
+	wfs, _, err := c.client.Actions.ListWorkflows(ctx, c.Owner, c.Repository, &github.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, w := range wfs.Workflows {
+		labels, err := c.getLabels(ctx, *w.Path)
+		if err != nil {
+			klog.Warningf("Failed to get workflow info for %s in %s/%s: %s", *w.Path, c.Owner, c.Repository, err.Error())
+		}
+		results[*w.ID] = utils.WorkflowInfo{
+			ID:     *w.ID,
+			Name:   *w.Name,
+			Labels: labels,
+		}
+	}
+
+	return &results, nil
 }

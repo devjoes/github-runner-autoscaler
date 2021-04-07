@@ -1,7 +1,9 @@
 package gitclient
 
 import (
+	"bytes"
 	"context"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -23,4 +25,41 @@ func TestTokenization(t *testing.T) {
 	key, name := tokenizeToken(token)
 	assert.Equal(t, "Qgw+4u9Aw0jqoYTfJwVFLsjW067wO4YwXLYCNw", key)
 	assert.Equal(t, "324****************************************j23", name)
+}
+
+func TestLabelsExtractionEmpty(t *testing.T) {
+	wfYaml :=
+		`
+name: CI
+jobs:
+  build:
+    steps:
+      - uses: actions/checkout@v2`
+
+	client := GithubClient{}
+	reader := ioutil.NopCloser(bytes.NewReader([]byte(wfYaml)))
+	labels, err := client.processWorkflow(reader)
+	assert.Nil(t, err)
+	assert.Empty(t, labels)
+}
+
+func TestLabelsExtraction(t *testing.T) {
+	wfYaml :=
+		`
+name: CI
+jobs:
+  build:
+    runs-on: [foo,bar]
+    steps:
+      - uses: actions/checkout@v2
+  deploy:
+    runs-on: [foo,baz]
+    steps:
+    - uses: actions/checkout@v2`
+
+	client := GithubClient{}
+	reader := ioutil.NopCloser(bytes.NewReader([]byte(wfYaml)))
+	labels, err := client.processWorkflow(reader)
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"bar", "baz", "foo"}, labels)
 }

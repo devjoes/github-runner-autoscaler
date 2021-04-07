@@ -6,25 +6,22 @@ import (
 	"strings"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/config"
+	utils "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/utils"
 	"github.com/google/go-github/v33/github"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-const WfIdLabel = "wf_id"
+const (
+	WfIdLabel        = "wf_id"
+	WfNameLabel      = "wf_name"
+	WfRunsOnLabel    = "wf_runson"
+	CrNameLabel      = "cr_name"
+	CrNamespaceLabel = "cr_namespace"
+	CrRepoLabel      = "cr_repo"
+	CrOwnerLabel     = "cr_owner"
+)
 
-//const WfNameLabel = "wf_name"//TODO: get name and runner labels
-const JobStatusLabel = "job_status"
-
-var JobLabelsForPrometheus []string = []string{JobStatusLabel, WfIdLabel}
-
-func containsStr(arr []string, i string) bool {
-	for _, x := range arr {
-		if x == i {
-			return true
-		}
-	}
-	return false
-}
+var JobLabelsForPrometheus []string = []string{WfIdLabel, WfNameLabel, WfRunsOnLabel}
 
 // func GetJobLabelDataForMetrics(labeledJobIds *map[int64]map[string]string) []string {
 // 	allJobLabels := map[string][]string{}
@@ -68,27 +65,30 @@ func GetLabelsForOutput(lbls map[string][]string) ([]string, map[string]string) 
 	return prometheusLabels, allLabelStrings
 }
 
-func getLabels(r *github.WorkflowRun, wf *config.GithubWorkflowConfig) labels.Set {
+func getLabels(r *github.WorkflowRun, wf *config.GithubWorkflowConfig, wfInfo map[int64]utils.WorkflowInfo) labels.Set {
 	var lbls labels.Set = map[string]string{
-		WfIdLabel:      fmt.Sprintf("%d", *r.WorkflowID),
-		JobStatusLabel: *r.Status,
-		"name":         wf.Name,
-		"namespace":    wf.Namespace,
-		"repo":         wf.Repository,
-		"owner":        wf.Owner,
+		WfIdLabel:        fmt.Sprintf("%d", *r.WorkflowID),
+		CrNameLabel:      wf.Name,
+		CrNamespaceLabel: wf.Namespace,
+		CrRepoLabel:      wf.Repository,
+		CrOwnerLabel:     wf.Owner,
+	}
+	info, found := wfInfo[*r.WorkflowID]
+	if found {
+		lbls[WfNameLabel] = info.Name
+		lbls[WfRunsOnLabel] = strings.Join(info.Labels, ",")
 	}
 	return lbls
 }
 
-func FilterBySelector(runs []*github.WorkflowRun, wf *config.GithubWorkflowConfig, selector labels.Selector) ([]*github.WorkflowRun, map[string][]string) {
+func FilterBySelector(runs []*github.WorkflowRun, wf *config.GithubWorkflowConfig, wfInfo map[int64]utils.WorkflowInfo, selector labels.Selector) ([]*github.WorkflowRun, map[string][]string) {
 	filtered := []*github.WorkflowRun{}
 	matchedLabels := map[string][]string{}
-	//wfExtra := getExtraWfInfo(resp)
 	for _, r := range runs {
-		lbls := getLabels(r, wf)
+		lbls := getLabels(r, wf, wfInfo)
 		if selector.Matches(lbls) {
 			for l, v := range lbls {
-				if !containsStr(matchedLabels[l], v) {
+				if !utils.ContainsStr(matchedLabels[l], v) {
 					matchedLabels[l] = append(matchedLabels[l], v)
 				}
 			}

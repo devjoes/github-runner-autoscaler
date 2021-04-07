@@ -19,8 +19,8 @@
 				"--authorization-kubeconfig=/home/joe/.kube/config",
 				"--lister-kubeconfig=/home/joe/.kube/config",
 				"--kubeconfig=/home/joe/.kube/config",
-				"--authentication-skip-lookup",
-				"--memcached-servers=127.0.0.1:11211"
+				"--authentication-skip-lookup"
+				//"--memcached-servers=127.0.0.1:11211"
 			]
 		}
 	]

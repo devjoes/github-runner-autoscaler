@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/state"
+	utils "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/utils"
 	"github.com/google/go-github/v33/github"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,6 +35,25 @@ type Client struct {
 	cacheWindowWhenEmpty time.Duration
 	stateProvider        state.IStateProvider
 	name                 string
+	gitOwnerRepo         string
+}
+
+func (c *Client) GetWorkflowInfo(ctx context.Context) (map[int64]utils.WorkflowInfo, error) {
+	wfData, err := c.stateProvider.GetWorkflowInfo(c.gitOwnerRepo)
+	if err != nil {
+		return nil, err
+	}
+	if wfData == nil {
+		wfData, err = c.innerClient.GetWorkflowData(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	err = c.stateProvider.SetWorkflowInfo(c.gitOwnerRepo, wfData)
+	if err != nil {
+		return nil, err
+	}
+	return *wfData, err
 }
 
 func (c *Client) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, error) {
@@ -83,12 +103,13 @@ func (c *Client) SaveState(state *state.ClientState) error {
 	return c.stateProvider.SetState(c.name, state)
 }
 
-func NewClient(innerClient IStatelessClient, name string, cacheWindow time.Duration, cacheWindowWhenEmpty time.Duration, stateProvider state.IStateProvider) Client {
+func NewClient(innerClient IStatelessClient, name string, gitOwnerRepo string, cacheWindow time.Duration, cacheWindowWhenEmpty time.Duration, stateProvider state.IStateProvider) Client {
 	return Client{
 		innerClient:          innerClient,
 		cacheWindow:          cacheWindow,
 		cacheWindowWhenEmpty: cacheWindowWhenEmpty,
 		name:                 name,
+		gitOwnerRepo:         gitOwnerRepo,
 		stateProvider:        stateProvider,
 	}
 }

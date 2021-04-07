@@ -6,8 +6,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/utils"
 	"github.com/devjoes/mc/v3" //TODO: Revert to memcachier/mc once https://github.com/memcachier/mc/issues/16 is fixed
 	"k8s.io/apimachinery/pkg/util/rand"
+)
+
+const (
+	stateCacheTime  = 60 * 60
+	wfInfoCacheTime = 5 * 60
 )
 
 type MemcachedStateProvider struct {
@@ -51,6 +57,30 @@ func (p *MemcachedStateProvider) SetState(key string, state *ClientState) error 
 	if err != nil {
 		return err
 	}
-	_, err = p.cache.Set(key, string(data), 0, 60*60, 0)
+	_, err = p.cache.Set(key, string(data), 0, stateCacheTime, 0)
+	return err
+}
+
+func (p *MemcachedStateProvider) GetWorkflowInfo(key string) (*map[int64]utils.WorkflowInfo, error) {
+	val, _, _, err := p.cache.Get(key)
+	if err == nil {
+		var wfInfo map[int64]utils.WorkflowInfo
+		err = json.Unmarshal([]byte(val), &wfInfo)
+		if err == nil {
+			return &wfInfo, nil
+		}
+	}
+	if errors.Is(err, mc.ErrNotFound) {
+		return nil, nil
+	}
+	return nil, err
+}
+
+func (p *MemcachedStateProvider) SetWorkflowInfo(key string, wfInfo *map[int64]utils.WorkflowInfo) error {
+	data, err := json.Marshal(wfInfo)
+	if err != nil {
+		return err
+	}
+	_, err = p.cache.Set(key, string(data), 0, wfInfoCacheTime, 0)
 	return err
 }
