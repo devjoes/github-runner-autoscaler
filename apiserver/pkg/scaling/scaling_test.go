@@ -55,6 +55,8 @@ func TestLogisticBounds(t *testing.T) {
 	}
 	assert.Equal(t, int32(4), s.GetOutput(30))
 	assert.Equal(t, int32(1), s.GetOutput(1))
+	s.MinWorkers = 2
+	assert.Equal(t, int32(2), s.GetOutput(1))
 }
 
 func TestLogistic(t *testing.T) {

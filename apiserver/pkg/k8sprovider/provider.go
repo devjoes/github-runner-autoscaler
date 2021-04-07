@@ -1,6 +1,8 @@
 package k8sprovider
 
 import (
+	"time"
+
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/config"
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/host"
 	labeling "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/labeling"
@@ -9,7 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,7 +40,7 @@ func NewProvider(orchestrator *host.Host) provider.CustomMetricsProvider {
 	return provider
 }
 
-func metricFor(value resource.Quantity, wf config.GithubWorkflowConfig, lbls map[string]string) *custom_metrics.MetricValue {
+func metricFor(value resource.Quantity, retrievalTime time.Time, wf config.GithubWorkflowConfig, lbls map[string]string) *custom_metrics.MetricValue {
 	return &custom_metrics.MetricValue{
 		Metric: custom_metrics.MetricIdentifier{
 			Name:     wf.Name,
@@ -47,11 +48,11 @@ func metricFor(value resource.Quantity, wf config.GithubWorkflowConfig, lbls map
 		},
 		DescribedObject: custom_metrics.ObjectReference{Kind: "ScaledActionRunner", APIVersion: "v1alpha1", Name: wf.Name, Namespace: wf.Namespace},
 		Value:           value,
-		Timestamp:       metav1.Now(),
+		Timestamp:       v1.Time{Time: retrievalTime},
 	}
 }
 
-func (p *workflowQueueProvider) valueFor(info provider.CustomMetricInfo, name types.NamespacedName, metricSelector labels.Selector) (resource.Quantity, *config.GithubWorkflowConfig, map[string]string, error) {
+func (p *workflowQueueProvider) valueFor(info provider.CustomMetricInfo, name types.NamespacedName, metricSelector labels.Selector) (resource.Quantity, time.Time, *config.GithubWorkflowConfig, map[string]string, error) {
 	var err error
 	if metricSelector == nil {
 		metricSelector, err = labels.Parse(info.Metric)
@@ -59,15 +60,15 @@ func (p *workflowQueueProvider) valueFor(info provider.CustomMetricInfo, name ty
 			klog.Warningf("Invalid selector '%s' in %s. %s", info.Metric, name.String(), err.Error())
 		}
 	}
-	total, lbls, wf, err := p.orchestrator.QueryMetric(name.Name, metricSelector)
+	total, retrievalTime, lbls, wf, err := p.orchestrator.QueryMetric(name.Name, metricSelector)
 	if err != nil && err.Error() == host.MetricErrNotFound {
-		return resource.Quantity{}, nil, nil, provider.NewMetricNotFoundForError(info.GroupResource, info.Metric, name.Name)
+		return resource.Quantity{}, time.Time{}, nil, nil, provider.NewMetricNotFoundForError(info.GroupResource, info.Metric, name.Name)
 	}
 
 	promLabels, allLabels := labeling.GetLabelsForOutput(lbls)
 
 	if err != nil {
-		return resource.Quantity{}, wf, nil, err
+		return resource.Quantity{}, time.Time{}, wf, nil, err
 	}
 
 	promLabels = append([]string{name.String(), metricSelector.String()}, promLabels...)
@@ -76,7 +77,7 @@ func (p *workflowQueueProvider) valueFor(info provider.CustomMetricInfo, name ty
 
 	guageFilteredQueueLength.WithLabelValues(promLabels...).Set(float64(total))
 	guageFilteredScaledQueueLength.WithLabelValues(promLabels...).Set(float64(scaledTotal))
-	return *resource.NewQuantity(int64(scaledTotal), resource.DecimalSI), wf, allLabels, nil
+	return *resource.NewQuantity(int64(scaledTotal), resource.DecimalSI), *retrievalTime, wf, allLabels, nil
 }
 
 func (p *workflowQueueProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
@@ -90,7 +91,7 @@ func (p *workflowQueueProvider) GetMetricByName(name types.NamespacedName, info 
 			return nil, err
 		}
 	}
-	value, wf, lbls, err := p.valueFor(info, name, selector)
+	value, tm, wf, lbls, err := p.valueFor(info, name, selector)
 
 	if err != nil {
 		if err.Error() == host.MetricErrNotFound {
@@ -100,7 +101,7 @@ func (p *workflowQueueProvider) GetMetricByName(name types.NamespacedName, info 
 		klog.Warningf("Error getting metric with %s %s %s. %s", name, info.String(), selector.String(), err.Error())
 		return nil, errors.NewBadRequest("Error getting metric")
 	}
-	metric := metricFor(value, *wf, lbls)
+	metric := metricFor(value, tm, *wf, lbls)
 	return metric, err
 }
 
@@ -114,14 +115,14 @@ func (p *workflowQueueProvider) GetMetricBySelector(namespace string, selector l
 	}
 
 	for _, name := range names {
-		v, wf, lbls, err := p.valueFor(info, types.NamespacedName{Namespace: namespace, Name: name}, metricSelector)
+		v, tm, wf, lbls, err := p.valueFor(info, types.NamespacedName{Namespace: namespace, Name: name}, metricSelector)
 		if err != nil {
 			return nil, err
 		}
 		if len(lbls) == 0 {
 			continue
 		}
-		metrics.Items = append(metrics.Items, *metricFor(v, *wf, lbls))
+		metrics.Items = append(metrics.Items, *metricFor(v, tm, *wf, lbls))
 	}
 	return &metrics, nil
 }

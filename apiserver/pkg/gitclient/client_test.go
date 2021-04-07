@@ -28,7 +28,7 @@ func TestCallsInnerClientIfLastRequestInvalid(t *testing.T) {
 			QueueLength: queueLength,
 			State:       state.ClientState{}}
 		client := NewClient(&innerClient, StateName, GitOwnerRepo, time.Hour, time.Hour, stateProvider)
-		result, err := client.GetQueuedJobs(context.TODO())
+		result, _, err := client.GetQueuedJobs(context.TODO())
 		assert.Nil(t, err)
 		assert.Equal(t, queueLength, len(result))
 		s, _ := client.GetState()
@@ -55,7 +55,7 @@ func callEvery100Ms(t *testing.T, lastTotalQueueSize int, cacheWindowMs int, cac
 
 	innerClient.On(GetQueuedJobs).Return(lastTotalQueueSize, nil)
 	for i := 0; i < callCount; i++ {
-		jobs, err := client.GetQueuedJobs(context.TODO())
+		jobs, _, err := client.GetQueuedJobs(context.TODO())
 		assert.Nil(t, err)
 		assert.Equal(t, lastTotalQueueSize, len(jobs))
 		time.Sleep(100 * time.Millisecond)

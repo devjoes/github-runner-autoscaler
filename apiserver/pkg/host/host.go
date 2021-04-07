@@ -93,8 +93,8 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 	}
 	for _, wf := range h.config.GetAllWorkflows() {
 		c := h.getClient(&wf)
-		jobs, err := c.GetQueuedJobs(context.Background())
-		name := fmt.Sprintf("%s/%s (%s/%s)", wf.Namespace, wf.Name, wf.Owner, wf.Repository)
+		jobs, retrievalTime, err := c.GetQueuedJobs(context.Background())
+		name := fmt.Sprintf("%s/%s (%s/%s) @%s", wf.Namespace, wf.Name, wf.Owner, wf.Repository, retrievalTime.String())
 		if err != nil {
 			klog.Errorf("Error whilst getting jobs for %s: %s", name, err.Error())
 			return nil, err
