@@ -45,6 +45,8 @@ EOF
 - TODO: Make runners close session on shutdown
 - TODO: Have option to not output labels - could be sensitive
 
+* TODO: Get gittoken keys
+
 # Cleanup
 
 kubectl delete -f ../crs.yaml
