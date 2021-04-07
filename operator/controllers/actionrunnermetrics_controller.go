@@ -72,6 +72,7 @@ func (r *ActionRunnerMetricsReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 	objs := append(armgenerator.GenerateMetricsApiServer(metrics), o...)
+	objs = append(objs, armgenerator.GeneratePrometheusServiceMonitor(metrics)...)
 
 	objs = append(objs, armgenerator.GenerateAuthTrigger(metrics)...)
 	deploy := func(toDeploy []client.Object, preReqsOnly bool) (bool, error) {
