@@ -75,6 +75,10 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 		config:        conf,
 		stateProvider: stateProvider,
 	}
+	err = h.config.InitWorkflows()
+	if err != nil {
+		return &h, err
+	}
 	for _, wf := range h.config.GetAllWorkflows() {
 		c := h.getClient(&wf)
 		jobs, err := c.GetQueuedJobs(context.Background())

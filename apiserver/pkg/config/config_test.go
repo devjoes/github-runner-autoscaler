@@ -30,6 +30,10 @@ func createConfig(runnerNSsStr string, allNs bool, kubeconfig string, inCluster 
 		flagMemcachedPass:     &empty,
 	}
 	err := config.SetupConfig(params...)
+	if err != nil {
+		return config, err
+	}
+	err = config.InitWorkflows(params...)
 	return config, err
 }
 

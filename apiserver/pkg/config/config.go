@@ -168,7 +168,7 @@ func (c *Config) SetupConfig(params ...interface{}) error {
 	output, _ := json.Marshal(c)
 	klog.Infof("Config: %s", string(output))
 
-	return c.initWorkflows(params)
+	return nil
 }
 
 type Duration struct {

@@ -19,7 +19,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (c *Config) initWorkflows(params []interface{}) error {
+func (c *Config) InitWorkflows(params ...interface{}) error {
 	c.store = cache.NewStore(getKey)
 	var k8sClient kubernetes.Interface
 	var runnerClient runnerclient.IRunnersV1Alpha1Client
