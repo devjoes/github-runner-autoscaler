@@ -3,7 +3,10 @@ package gitclient
 //TODO: record rate limits
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
+	"strings"
 
 	"github.com/google/go-github/v33/github"
 	"golang.org/x/oauth2"
@@ -12,11 +15,13 @@ import (
 
 type IStatelessClient interface {
 	GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, error)
+	GetRemainingCreditsForToken(ctx context.Context) (string, string, int, error)
 }
 type GithubClient struct {
 	Owner      string
 	Repository string
 	client     *github.Client
+	token      string
 }
 
 type result struct {
@@ -133,4 +138,28 @@ func filterJobsByStatus(jobs []*github.WorkflowRun) []*github.WorkflowRun {
 		}
 	}
 	return filtered
+}
+
+func tokenizeToken(token string) (string, string) {
+	hash := sha256.Sum224([]byte(token))
+	key := base64.RawStdEncoding.EncodeToString(hash[:])
+	const sideCharsRevealed = 3
+	redacted := strings.Builder{}
+	for i, c := range token {
+		if i < sideCharsRevealed || i >= len(token)-sideCharsRevealed {
+			redacted.WriteRune(c)
+		} else {
+			redacted.WriteRune('*')
+		}
+	}
+	return key, redacted.String()
+}
+
+func (c *GithubClient) GetRemainingCreditsForToken(ctx context.Context) (string, string, int, error) {
+	key, name := tokenizeToken(c.token)
+	limits, _, err := c.client.RateLimits(ctx)
+	if err != nil {
+		return key, name, 0, err
+	}
+	return key, name, limits.Core.Remaining, nil
 }

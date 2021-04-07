@@ -2,6 +2,7 @@ package gitclient
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -52,6 +53,7 @@ func (c *Client) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, erro
 	if s.Status != state.Valid || time.Now().After(cacheUntil) {
 		cached = false
 		klog.V(5).Infof("Cache miss %d %s %s %v", s.Status, cacheUntil.String(), time.Now().String(), s.LastValue)
+
 		jobQueue, err = c.innerClient.GetQueuedJobs(ctx)
 		if err != nil {
 			s.Status = state.Errored
@@ -96,10 +98,20 @@ func (c *Client) instrument(labeledJobIds *[]*github.WorkflowRun, cached *bool, 
 
 	guageQueueLength.WithLabelValues(labels...).Set(float64(len(*labeledJobIds)))
 	counterQueries.WithLabelValues(labels...).Inc()
+
+	if !*cached {
+		key, name, val, e := c.innerClient.GetRemainingCreditsForToken(context.Background())
+		if e != nil {
+			fmt.Printf("Error getting credit count: %s\n", e.Error())
+			return
+		}
+		guageGithubCredits.WithLabelValues(key, name).Set(float64(val))
+	}
 }
 
 var guageQueueLength *prometheus.GaugeVec
 var counterQueries *prometheus.CounterVec
+var guageGithubCredits *prometheus.GaugeVec
 
 func init() {
 	labelNames := []string{
@@ -115,4 +127,9 @@ func init() {
 		Name: "workflow_queue_queries",
 		Help: "Number of times a workflow queue is queried",
 	}, labelNames)
+	guageGithubCredits = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "github_credits",
+		Help: "Remaining rate limit creds by token",
+	}, []string{"token_id", "token_name"})
+
 }

@@ -83,7 +83,7 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 			klog.Errorf("Error whilst getting jobs for %s: %s", name, err.Error())
 			return nil, err
 		}
-		klog.Info("Initialized %s: %d jobs", name, len(jobs))
+		klog.Infof("Initialized %s: %d jobs", name, len(jobs))
 	}
 	return &h, nil
 }

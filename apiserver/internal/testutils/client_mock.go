@@ -20,6 +20,9 @@ type ClientMock struct {
 	ErrorOnGetQueuedJobs     bool
 }
 
+func (c *ClientMock) GetRemainingCreditsForToken(ctx context.Context) (string, string, int, error) {
+	return "Qgw+4u9Aw0jqoYTfJwVFLsjW067wO4YwXLYCNw", "324****************************************j23", 123, nil
+}
 func (c *ClientMock) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, error) {
 	if c.ErrorOnGetQueuedJobs {
 		return nil, fmt.Errorf("%s Bang", c.GetState("foo").Name)
