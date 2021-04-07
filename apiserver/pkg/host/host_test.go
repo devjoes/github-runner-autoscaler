@@ -36,8 +36,8 @@ const (
 // 	host, err := NewHost(config.Config{}, wfs)
 // 	assert.Nil(t, err)
 
-// 	start := time.Now()
-// 	duration := time.Now().Sub(start)
+// 	start := time.Now().Utc()
+// 	duration := time.Now().Utc().Sub(start)
 // 	clients, err := host.getClients()
 // 	assert.Nil(t, err)
 // 	assert.Equal(t, testClientCount, len(clients))

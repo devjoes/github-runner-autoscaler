@@ -46,6 +46,17 @@ func testRangeAgainstOutputs(t *testing.T, maxWorkers int, scaleFactor float64, 
 	}
 }
 
+func TestLogisticBounds(t *testing.T) {
+	s := Scaling{
+		MinWorkers:  0,
+		MaxWorkers:  4,
+		ScaleFactor: 0.5,
+		Linear:      false,
+	}
+	assert.Equal(t, int32(4), s.GetOutput(30))
+	assert.Equal(t, int32(1), s.GetOutput(1))
+}
+
 func TestLogistic(t *testing.T) {
 	testRangeAgainstOutputs(t, 10, 0.25, []int{1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 8, 9, 9, 9, 9, 10})
 	testRangeAgainstOutputs(t, 10, 0.5, []int{1, 1, 2, 3, 4, 5, 7, 8, 8, 9, 9, 10})

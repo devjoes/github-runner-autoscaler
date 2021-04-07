@@ -32,26 +32,26 @@ func (h *Host) GetAllMetricNames(namespace string) ([]string, error) {
 
 const MetricErrNotFound string = "metric not found"
 
-func (h *Host) QueryMetric(key string, selector labels.Selector) (int, map[string][]string, *config.GithubWorkflowConfig, error) {
+func (h *Host) QueryMetric(key string, selector labels.Selector) (int, *time.Time, map[string][]string, *config.GithubWorkflowConfig, error) {
 	wf, err := h.config.GetWorkflow(key)
 	if err != nil {
-		return 0, nil, nil, err
+		return 0, nil, nil, nil, err
 	}
 	if wf == nil {
-		return 0, nil, nil, errors.New(MetricErrNotFound)
+		return 0, nil, nil, nil, errors.New(MetricErrNotFound)
 	}
 	client := h.getClient(wf)
 	ctx := context.Background()
-	jobs, err := client.GetQueuedJobs(ctx)
+	jobs, retrievalTime, err := client.GetQueuedJobs(ctx)
 	if err != nil {
-		return 0, nil, wf, err
+		return 0, nil, nil, wf, err
 	}
 	wfInfo, err := client.GetWorkflowInfo(ctx)
 	if err != nil {
-		return 0, nil, wf, err
+		return 0, nil, nil, wf, err
 	}
 	filteredJobs, matchedLabels := labeling.FilterBySelector(jobs, wf, wfInfo, selector)
-	return len(filteredJobs), matchedLabels, wf, err
+	return len(filteredJobs), retrievalTime, matchedLabels, wf, err
 }
 
 func (h *Host) getClient(wf *config.GithubWorkflowConfig) client.Client {

@@ -56,29 +56,29 @@ func (c *Client) GetWorkflowInfo(ctx context.Context) (map[int64]utils.WorkflowI
 	return *wfData, err
 }
 
-func (c *Client) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, error) {
+func (c *Client) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, *time.Time, error) {
 	var jobQueue []*github.WorkflowRun
 	cached := true
 	var err error
 	defer c.instrument(&jobQueue, &cached, &err)
 	s, err := c.GetState()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	cacheUntil := s.LastRequest.Add(c.cacheWindow)
 	if s.LastValue == nil || len(s.LastValue) == 0 {
 		cacheUntil = s.LastRequest.Add(c.cacheWindowWhenEmpty)
 	}
 
-	if s.Status != state.Valid || time.Now().After(cacheUntil) {
+	if s.Status != state.Valid || time.Now().UTC().After(cacheUntil) {
 		cached = false
-		klog.V(5).Infof("Cache miss %d %s %s %v", s.Status, cacheUntil.String(), time.Now().String(), s.LastValue)
+		klog.V(5).Infof("Cache miss %d %s %s %v", s.Status, cacheUntil.String(), time.Now().UTC().String(), s.LastValue)
 
 		jobQueue, err = c.innerClient.GetQueuedJobs(ctx)
 		if err != nil {
 			s.Status = state.Errored
 		} else {
-			s.LastRequest = time.Now()
+			s.LastRequest = time.Now().UTC()
 			s.LastValue = jobQueue
 			s.Status = state.Valid
 		}
@@ -93,7 +93,7 @@ func (c *Client) GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, erro
 		}
 	}
 
-	return s.LastValue, err
+	return s.LastValue, &s.LastRequest, err
 }
 
 func (c *Client) GetState() (*state.ClientState, error) {

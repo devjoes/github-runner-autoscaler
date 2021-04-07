@@ -29,30 +29,34 @@ func NewScaling(crd *runnerv1alpha1.ScaledActionRunner) Scaling {
 func logistic(c float64, a float64, k float64, x float64) float64 {
 	// https://www.desmos.com/calculator/agxuc5gip8
 	const e = 2.718
-	b := math.Pow(k, (0 - e))
+	b := math.Pow(e, (0 - k))
 	return c / (1 + a*math.Pow(b, x))
 }
 
 func (s *Scaling) GetOutput(queueLength int32) int32 {
-	var result int32
+	var result float64
+	fMinWorkers := float64(s.MinWorkers)
+	fMaxWorkers := float64(s.MaxWorkers)
+	fQueueLength := float64(queueLength)
 
-	result = s.MinWorkers
+	result = fMinWorkers
 	if queueLength > 0 {
 		if s.Linear {
-			result = queueLength
+			result = fQueueLength
 		} else {
-			result = int32(math.Round(logistic(float64(s.MaxWorkers), float64(s.MaxWorkers), s.ScaleFactor, float64(queueLength))))
+			result = logistic(float64(s.MaxWorkers), float64(s.MaxWorkers), s.ScaleFactor, float64(queueLength))
 		}
-		if result > s.MaxWorkers {
-			result = s.MaxWorkers
+
+		if result > fMaxWorkers {
+			result = fMaxWorkers
 		}
-		if result < s.MinWorkers {
-			result = s.MinWorkers
+		if result < fMinWorkers {
+			result = fMinWorkers
 		}
 		if result == 0 && queueLength > 0 {
 			result = 1
 		}
 	}
-	klog.V(10).Infof("Scaling: queueLength=%d s.Linear=%t, s.MinWorkers=%f, s.MaxWorkers=%f, s.ScaleFactor=%f.  RESULT=%f", queueLength, s.Linear, s.MinWorkers, s.MaxWorkers, s.ScaleFactor, result)
-	return result
+	klog.V(10).Infof("Scaling: queueLength=%d s.Linear=%t, s.MinWorkers=%d, s.MaxWorkers=%d, s.ScaleFactor=%f.  RESULT=%d (%f)", queueLength, s.Linear, s.MinWorkers, s.MaxWorkers, s.ScaleFactor, math.Round(result), result)
+	return int32(math.Round(result))
 }
