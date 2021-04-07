@@ -61,9 +61,13 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 			stateProvider, err = state.NewMemcachedStateProvider(conf.MemcachedServers, conf.MemcachedUser, conf.MemcachedPass)
 			attempts++
 			if err != nil {
+				stateProvider = nil
 				klog.Warningf("Attempt %d - Error connecting to memcached: %s", attempts, err.Error())
 				time.Sleep(time.Second)
 			}
+			fmt.Println(err)
+			fmt.Println(stateProvider)
+			fmt.Println(attempts)
 		}
 		if err != nil {
 			return nil, err
