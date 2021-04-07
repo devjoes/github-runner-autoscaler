@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"strings"
 	"time"
 
 	runnerclient "github.com/devjoes/github-runner-autoscaler/apiserver/pkg/runnerclient"
@@ -185,22 +187,40 @@ func (c *Config) setupWatcher(k8sClient kubernetes.Interface, runnerClient runne
 }
 
 func workflowFromScaledActionRunner(ctx context.Context, client kubernetes.Interface, crd runnerv1alpha1.ScaledActionRunner) (*GithubWorkflowConfig, error) {
-	ns := crd.ObjectMeta.Namespace
-	secret, err := client.CoreV1().Secrets(ns).Get(ctx, crd.Spec.GithubTokenSecret, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("error reading secret %s in namespace %s. %s", crd.Spec.GithubTokenSecret, ns, err.Error())
-	}
 	if crd.Spec.ScaleFactor == nil {
 		one := "1"
 		crd.Spec.ScaleFactor = &one
 	}
 
+	token, err := getToken(ctx, client, crd)
+	if err != nil {
+		return nil, err
+	}
 	return &GithubWorkflowConfig{
 		Name:       crd.ObjectMeta.Name,
-		Namespace:  ns,
-		Token:      string(secret.Data["token"]),
+		Namespace:  crd.ObjectMeta.Namespace,
+		Token:      token,
 		Owner:      crd.Spec.Owner,
 		Repository: crd.Spec.Repo,
 		Scaling:    scaling.NewScaling(&crd),
 	}, nil
+}
+
+func getToken(ctx context.Context, client kubernetes.Interface, crd runnerv1alpha1.ScaledActionRunner) (string, error) {
+	ns := crd.ObjectMeta.Namespace
+	secret, err := client.CoreV1().Secrets(ns).Get(ctx, crd.Spec.GithubTokenSecret, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("error reading secret %s in namespace %s. %s", crd.Spec.GithubTokenSecret, ns, err.Error())
+	}
+	var fields []string
+	for k, _ := range secret.Data {
+		if strings.Index(k, "token") == 0 {
+			fields = append(fields, k)
+		}
+	}
+	if len(fields) == 0 {
+		return "", fmt.Errorf("no fields begining with 'token' found in secret %s in namespace %s.", crd.Spec.GithubTokenSecret, ns)
+	}
+	index := rand.Intn(len(fields))
+	return string(secret.Data[fields[index]]), nil
 }
