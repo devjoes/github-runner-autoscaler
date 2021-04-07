@@ -227,7 +227,7 @@ func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv
 		found.ObjectMeta.Namespace = config.ObjectMeta.Namespace
 		updated = true
 	}
-	spec := found.Spec
+	spec := *found.Spec.DeepCopy()
 	if config.Spec.Scaling != nil {
 		if config.Spec.Scaling.Behavior != nil {
 			spec.Advanced = &keda.AdvancedConfig{

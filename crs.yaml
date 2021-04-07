@@ -19,6 +19,7 @@ spec:
   maxRunners: 4
   owner: JSainsburyPLC
   repo: js-hello
+  selector: wf_runson="self-hosted"
   runner:
     labels: foo
     limits:

@@ -8,7 +8,14 @@
 			"mode": "auto",
 			"program": "${workspaceFolder}/main.go",
 			"env": {},
-			"args": []
+			"args": [],
+			"dlvLoadConfig": {
+				"followPointers": true,
+				"maxVariableRecurse": 1,
+				"maxStringLen": 500,
+				"maxArrayValues": 500,
+				"maxStructFields": -1
+			}
 		},
 		{
 			"name": "Launch remote",
@@ -18,7 +25,14 @@
 			"remotePath": "/home/joe/github-action-autoscaler/operator",
 			"port": 2345,
 			"host": "127.0.0.1",
-			"cwd": "/home/joe/github-action-autoscaler/operator"
+			"cwd": "/home/joe/github-action-autoscaler/operator",
+			"dlvLoadConfig": {
+				"followPointers": true,
+				"maxVariableRecurse": 1,
+				"maxStringLen": 500,
+				"maxArrayValues": 500,
+				"maxStructFields": -1
+			}
 		}
 	]
 }
