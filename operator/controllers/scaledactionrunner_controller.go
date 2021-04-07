@@ -103,7 +103,6 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	metricsEndpoint := fmt.Sprintf("%s.%s.svc", metricsName, metricsNamespace)
-	//TODO: Parse labels
 	selector := "*"
 	if runner.Spec.Selector != nil && *runner.Spec.Selector != "" {
 		selector = *runner.Spec.Selector

@@ -19,7 +19,7 @@ spec:
   maxRunners: 4
   owner: JSainsburyPLC
   repo: js-hello
-  selector: wf_runson="self-hosted"
+  selector: wf_runson=self-hosted
   runner:
     labels: foo
     limits:
@@ -38,7 +38,7 @@ spec:
     - test-1
     - test-2
     - test-3
-  scaleFactor: "0"
+  scaleFactor: "1"
   scaling:
     behavior:
       scaleUp:
@@ -47,5 +47,7 @@ spec:
             type: Percent
             value: 100
         stabilizationWindowSeconds: 30
-    cooldownPeriod: 3600
+    # When in production it is good to have this quite high
+    #cooldownPeriod: 3600
+    cooldownPeriod: 120
     pollingInterval: 30

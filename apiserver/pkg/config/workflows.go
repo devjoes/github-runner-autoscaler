@@ -91,7 +91,7 @@ func (c *Config) copyAllWorkflows(ctx context.Context, k8sClient kubernetes.Inte
 		}
 		runners = append(runners, r.Items...)
 	}
-	klog.V(5).Info("Retrieved %d ScaledActionRunners\n", len(runners))
+	klog.V(5).Infof("Retrieved %d ScaledActionRunners\n", len(runners))
 
 	purgeOld := true
 	var toCache []interface{}
@@ -113,7 +113,7 @@ func (c *Config) copyAllWorkflows(ctx context.Context, k8sClient kubernetes.Inte
 			c.store.Update(tc)
 		}
 	}
-	klog.V(5).Info("Copied %d workflows", len(toCache))
+	klog.V(5).Infof("Copied %d workflows", len(toCache))
 }
 
 func (c *Config) syncWorkflows(k8sClient kubernetes.Interface, runnerclient runnerclient.IRunnersV1Alpha1Client, runnerNSs []string) error {

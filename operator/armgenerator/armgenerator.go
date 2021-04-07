@@ -172,6 +172,7 @@ func generateExternalMetricsDeployment(c *runnerv1alpha1.ActionRunnerMetrics, ls
 			args = append(args, fmt.Sprintf("--memcached-user=%s", *c.Spec.MemcachedUser))
 		}
 	}
+	args = append(args, "--v=10") //TODO: Extra args
 	dep.Spec.Template.Spec.Containers[0].Args = append(dep.Spec.Template.Spec.Containers[0].Args, args...)
 	dep.Spec.Template.Spec.ServiceAccountName = c.Spec.Name
 	dep.Spec.Template.Spec.Volumes[1].Secret.SecretName = fmt.Sprintf("%s-cert", c.Spec.Name)

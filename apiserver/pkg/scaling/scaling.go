@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
+	"k8s.io/klog/v2"
 )
 
 type Scaling struct {
@@ -33,10 +34,12 @@ func logistic(c float64, a float64, k float64, x float64) float64 {
 }
 
 func (s *Scaling) GetOutput(queueLength int32) int32 {
-	if queueLength < 1 {
-		return s.MinWorkers
-	}
 	var result int32
+	defer klog.V(10).Infof("Scaling: s.Linear=%f, s.MinWorkers=%f, s.MaxWorkers=%f, s.ScaleFactor=%f.  RESULT=%f", s.Linear, s.MinWorkers, s.MaxWorkers, s.ScaleFactor, &result)
+	result = s.MinWorkers
+	if queueLength < 1 {
+		return result
+	}
 	if s.Linear {
 		result = queueLength
 	} else {
