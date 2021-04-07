@@ -331,6 +331,8 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              selector:
+                type: string
             required:
             - githubTokenSecret
             - maxRunners

@@ -46,6 +46,7 @@ type ScaledActionRunnerSpec struct {
 	Repo              string   `json:"repo"`
 	Scaling           *Scaling `json:"scaling,omitempty"`
 	ScaleFactor       *string  `json:"scaleFactor,omitempty"`
+	Selector          *string  `json:"selector,omitempty"`
 	Runner            *Runner  `json:"runner,omitempty"`
 }
 

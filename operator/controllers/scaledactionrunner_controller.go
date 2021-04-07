@@ -105,6 +105,9 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 	metricsEndpoint := fmt.Sprintf("%s.%s.svc", metricsName, metricsNamespace)
 	//TODO: Parse labels
 	selector := "*"
+	if runner.Spec.Selector != nil && *runner.Spec.Selector != "" {
+		selector = *runner.Spec.Selector
+	}
 	metricsUrl := fmt.Sprintf("https://%s/apis/custom.metrics.k8s.io/v1beta1/namespaces/%s/Scaledactionrunners/%s/%s", metricsEndpoint, req.Namespace, req.Name, selector)
 
 	setModified, setErr := r.syncStatefulSet(ctx, log, runner)
