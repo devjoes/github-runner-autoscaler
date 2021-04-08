@@ -2,6 +2,7 @@ package labeling
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -14,14 +15,14 @@ import (
 const (
 	WfIdLabel        = "wf_id"
 	WfNameLabel      = "wf_name"
-	WfRunsOnLabel    = "wf_runson"
+	WfAllRunsOn      = "wf_runs-on"
 	CrNameLabel      = "cr_name"
 	CrNamespaceLabel = "cr_namespace"
 	CrRepoLabel      = "cr_repo"
 	CrOwnerLabel     = "cr_owner"
 )
 
-var JobLabelsForPrometheus []string = []string{WfIdLabel, WfNameLabel, WfRunsOnLabel}
+var JobLabelsForPrometheus []string = []string{WfIdLabel, WfNameLabel, WfAllRunsOn}
 
 // func GetJobLabelDataForMetrics(labeledJobIds *map[int64]map[string]string) []string {
 // 	allJobLabels := map[string][]string{}
@@ -65,18 +66,35 @@ func GetLabelsForOutput(lbls map[string][]string) ([]string, map[string]string) 
 	return prometheusLabels, allLabelStrings
 }
 
+var rx *regexp.Regexp = regexp.MustCompile("(?i)[^-a-z\\d_.]")
+var rxEdges *regexp.Regexp = regexp.MustCompile("(?i)(^[^a-z\\d]+)|([^a-z\\d]+$)")
+
+func sanitizeLabelValue(val string) string {
+	return rxEdges.ReplaceAllString(rx.ReplaceAllString(val, "_"), "")
+}
+
 func getLabels(r *github.WorkflowRun, wf *config.GithubWorkflowConfig, wfInfo map[int64]utils.WorkflowInfo) labels.Set {
 	var lbls labels.Set = map[string]string{
 		WfIdLabel:        fmt.Sprintf("%d", *r.WorkflowID),
-		CrNameLabel:      wf.Name,
-		CrNamespaceLabel: wf.Namespace,
-		CrRepoLabel:      wf.Repository,
-		CrOwnerLabel:     wf.Owner,
+		CrNameLabel:      sanitizeLabelValue(wf.Name),
+		CrNamespaceLabel: sanitizeLabelValue(wf.Namespace),
+		CrRepoLabel:      sanitizeLabelValue(wf.Repository),
+		CrOwnerLabel:     sanitizeLabelValue(wf.Owner),
 	}
+	lbls[WfNameLabel] = "unknown"
 	info, found := wfInfo[*r.WorkflowID]
 	if found {
-		lbls[WfNameLabel] = info.Name
-		lbls[WfRunsOnLabel] = strings.Join(info.Labels, ",")
+		lbls[WfNameLabel] = sanitizeLabelValue(info.Name)
+		allRunsOn := strings.Builder{}
+		sort.Strings(info.Labels)
+		for i, rl := range info.Labels {
+			if i > 0 {
+				allRunsOn.WriteString(".")
+			}
+			allRunsOn.WriteString(strings.ReplaceAll(rl, ".", "_"))
+			lbls[fmt.Sprintf("wf_runs-on_%s", rl)] = rl
+		}
+		lbls[WfAllRunsOn] = allRunsOn.String()
 	}
 	return lbls
 }

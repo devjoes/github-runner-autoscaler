@@ -12,5 +12,5 @@ func ContainsStr(arr []string, i string) bool {
 type WorkflowInfo struct {
 	ID     int64    `json:"id,omitempty"`
 	Name   string   `json:"name,omitempty"`
-	Labels []string `json:"labels,omitempty"`
+	Labels []string `json:"labels,omitempty"` //TODO: Rename to RunsOn
 }

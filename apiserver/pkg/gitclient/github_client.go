@@ -1,6 +1,5 @@
 package gitclient
 
-//TODO: record rate limits
 import (
 	"context"
 	"crypto/sha256"
@@ -20,6 +19,7 @@ import (
 type IStatelessClient interface {
 	GetQueuedJobs(ctx context.Context) ([]*github.WorkflowRun, error)
 	GetRemainingCreditsForToken(ctx context.Context) (string, string, int, error)
+	//TODO: Rename to GetWorkflowInfo
 	GetWorkflowData(ctx context.Context) (*map[int64]utils.WorkflowInfo, error)
 }
 type GithubClient struct {
