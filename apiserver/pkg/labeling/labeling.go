@@ -15,7 +15,7 @@ import (
 const (
 	WfIdLabel        = "wf_id"
 	WfNameLabel      = "wf_name"
-	WfAllRunsOn      = "wf_runs-on"
+	WfAllRunsOn      = "wf_runs_on"
 	CrNameLabel      = "cr_name"
 	CrNamespaceLabel = "cr_namespace"
 	CrRepoLabel      = "cr_repo"
@@ -92,7 +92,7 @@ func getLabels(r *github.WorkflowRun, wf *config.GithubWorkflowConfig, wfInfo ma
 				allRunsOn.WriteString(".")
 			}
 			allRunsOn.WriteString(strings.ReplaceAll(rl, ".", "_"))
-			lbls[fmt.Sprintf("wf_runs-on_%s", rl)] = rl
+			lbls[fmt.Sprintf("wf_runs_on_%s", rl)] = rl
 		}
 		lbls[WfAllRunsOn] = allRunsOn.String()
 	}

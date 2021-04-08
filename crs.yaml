@@ -16,12 +16,12 @@ metadata:
   namespace: runners
 spec:
   githubTokenSecret: test-github
-  maxRunners: 4
+  maxRunners: 2
   owner: JSainsburyPLC
   repo: js-hello
   selector: wf_runson=self-hosted
   runner:
-    labels: foo
+    labels: build
     limits:
       cpu: "2"
       memory: 1Gi
@@ -36,6 +36,51 @@ spec:
   runnerSecrets:
     - test-0
     - test-1
+  scaleFactor: "1"
+  scaling:
+    behavior:
+      scaleUp:
+        policies:
+          - periodSeconds: 30
+            type: Percent
+            value: 100
+        stabilizationWindowSeconds: 30
+      scaleDown:
+        policies:
+          - periodSeconds: 120
+            type: Percent
+            value: 100
+        stabilizationWindowSeconds: 30
+    # When in production it is good to have this quite high
+    #cooldownPeriod: 3600
+    cooldownPeriod: 120
+    pollingInterval: 30
+---
+kind: ScaledActionRunner
+apiVersion: runner.devjoes.com/v1alpha1
+metadata:
+  name: js-hello-deploy
+  namespace: runners
+spec:
+  githubTokenSecret: test-github
+  maxRunners: 2
+  owner: JSainsburyPLC
+  repo: js-hello
+  selector: wf_runs-on_deploy
+  runner:
+    labels: deploy,foo
+    limits:
+      cpu: "2"
+      memory: 1Gi
+    workVolumeClaimTemplate:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 5Gi
+      storageClassName: manual
+      volumeMode: Filesystem
+  runnerSecrets:
     - test-2
     - test-3
   scaleFactor: "1"
@@ -44,6 +89,12 @@ spec:
       scaleUp:
         policies:
           - periodSeconds: 30
+            type: Percent
+            value: 100
+        stabilizationWindowSeconds: 30
+      scaleDown:
+        policies:
+          - periodSeconds: 120
             type: Percent
             value: 100
         stabilizationWindowSeconds: 30

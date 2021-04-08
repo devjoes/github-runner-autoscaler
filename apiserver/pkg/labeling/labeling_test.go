@@ -44,14 +44,14 @@ func TestSanitizeValue(t *testing.T) {
 
 func TestFilterBySelectorMatchesSelector(t *testing.T) {
 	jobs, wf, wfInfo := getTestData()
-	selectorStr := "wf_runs-on_foo.5,wf_runs-on_foo_bar.5"
+	selectorStr := "wf_runs_on_foo.5,wf_runs_on_foo_bar.5"
 	selector, _ := labels.Parse(selectorStr)
 	matched, lbls := FilterBySelector(jobs, wf, wfInfo, selector)
 	assert.Len(t, matched, 8)
 	assert.Equal(t, "bar_5.foo_5.foo_bar_5", lbls[WfAllRunsOn][0])
-	assert.Len(t, lbls["wf_runs-on_foo_bar.5"], 1)
-	assert.Len(t, lbls["wf_runs-on_foo.5"], 1)
-	assert.Len(t, lbls["wf_runs-on_bar.5"], 1)
+	assert.Len(t, lbls["wf_runs_on_foo_bar.5"], 1)
+	assert.Len(t, lbls["wf_runs_on_foo.5"], 1)
+	assert.Len(t, lbls["wf_runs_on_bar.5"], 1)
 
 	selectorStr = "wf_id,wf_name!=wf_5,cr_owner=" + testOwner
 	selector, _ = labels.Parse(selectorStr)
@@ -59,10 +59,10 @@ func TestFilterBySelectorMatchesSelector(t *testing.T) {
 	assert.Len(t, matched, 80-8)
 	assert.Len(t, lbls[WfAllRunsOn], 9)
 	assert.NotContains(t, "bar_5.foo_5.foo_bar_5", lbls[WfAllRunsOn])
-	assert.NotContains(t, lbls, "wf_runs-on_foo_bar.5")
-	assert.Len(t, lbls["wf_runs-on_foo_bar.6"], 1)
-	assert.Len(t, lbls["wf_runs-on_foo.7"], 1)
-	assert.Len(t, lbls["wf_runs-on_bar.8"], 1)
+	assert.NotContains(t, lbls, "wf_runs_on_foo_bar.5")
+	assert.Len(t, lbls["wf_runs_on_foo_bar.6"], 1)
+	assert.Len(t, lbls["wf_runs_on_foo.7"], 1)
+	assert.Len(t, lbls["wf_runs_on_bar.8"], 1)
 }
 
 func getTestData() ([]*github.WorkflowRun, *config.GithubWorkflowConfig, map[int64]utils.WorkflowInfo) {
