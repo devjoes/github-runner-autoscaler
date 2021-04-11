@@ -3,7 +3,7 @@ apiVersion: runner.devjoes.com/v1alpha1
 metadata:
   name: main
 spec:
-  name: test123
+  name: github-metrics-apiserver
   namespace: runners
   existingSslCertSecret: cert
   image: "joeshearn/github-runner-autoscaler-apiserver:master"

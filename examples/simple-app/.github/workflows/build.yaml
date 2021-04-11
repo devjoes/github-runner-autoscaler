@@ -1,0 +1,21 @@
+name: build
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+
+jobs:
+  build:
+    runs-on: [self-hosted]
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: echo "Building @ $(date)"
+      - run: docker build . -t 'test_image:latest' --build-arg APP_NAME=$GITHUB_REPOSITORY --build-arg BUILD_HOST=$HOST
+      - run: echo "Build finished @ $(date)"
+      - run: sleep 30s
+      - name: Upload image
+        uses: ishworkh/docker-image-artifact-upload@v1
+        with:
+          image: "test_image:latest"
+      - run: echo "Exiting @ $(date)"

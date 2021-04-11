@@ -1,0 +1,35 @@
+{
+  "name": "joe-template",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@octokit/rest": "^18.5.2",
+    "@octokit/types": "^6.13.0",
+    "@types/dockerode": "^3.2.3",
+    "@types/tmp": "^0.2.0",
+    "dockerode": "^3.2.1",
+    "tmp": "^0.2.1",
+    "ts-command-line-args": "^1.8.1",
+    "yaml": "^1.10.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^26.0.22",
+    "@typescript-eslint/eslint-plugin": "^4.21.0",
+    "@typescript-eslint/parser": "^4.21.0",
+    "eslint": "^7.23.0",
+    "jest": "^26.6.3",
+    "ts-jest": "^26.5.4",
+    "typescript": "^4.2.4"
+  },
+  "scripts": {
+    "build": "npx tsc && npm run lint",
+    "debug": "npm run build && npm run watch-debug",
+    "lint": "npx tsc --noEmit && eslint \"src/**/*.{js,ts}\" --quiet --fix",
+    "test": "jest --forceExit --coverage --verbose",
+    "start": "npm run build && node dist/index.js",
+    "package": "npm run build && npx ncc build dist -o pkg && mv pkg/index.js ../examples/add-runner.js && rm pkg -Rf"
+  },
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,9 @@
+namespace: placeholdername
+resources:
+  - ns.yaml
+  - build.yaml
+  - deploy.yaml
+patches:
+  - path: patch.yaml
+    target:
+      kind: ScaledActionRunner

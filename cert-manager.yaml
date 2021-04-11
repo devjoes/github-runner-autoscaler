@@ -1,0 +1,84 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: cert-manager
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: ca-certificate
+  namespace: cert-manager
+spec:
+  secretName: ca-cert
+  duration: 2880h # 120d
+  renewBefore: 360h # 15d
+  commonName: github-action-autoscaler-server-ca
+  isCA: true
+  keySize: 2048
+  usages:
+    - digital signature
+    - key encipherment
+  issuerRef:
+    name: selfsigned-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: ClusterIssuer
+metadata:
+  name: ca-issuer
+spec:
+  ca:
+    secretName: ca-cert
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: github-action-autoscaler-server
+  namespace: runners
+spec:
+  secretName: cert
+  duration: 2160h
+  renewBefore: 360h
+  isCA: false
+  keySize: 2048
+  keyAlgorithm: rsa
+  keyEncoding: pkcs1
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+  commonName: github-metrics-apiserver.runners.svc.cluster.local
+  dnsNames:
+    - "github-metrics-apiserver.runners.svc.cluster.local"
+    - "github-metrics-apiserver.runners.svc"
+    - "github-metrics-apiserver"
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: github-action-autoscaler-client
+  namespace: keda
+spec:
+  secretName: cert
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  keySize: 2048
+  keyAlgorithm: rsa
+  keyEncoding: pkcs1
+  usages:
+    - digital signature
+    - key encipherment
+    - client auth
+  commonName: Keda
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

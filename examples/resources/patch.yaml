@@ -1,0 +1,34 @@
+kind: ScaledActionRunner
+apiVersion: runner.devjoes.com/v1alpha1
+metadata:
+  name: ignored
+spec:
+  runner:
+    workVolumeClaimTemplate:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Mi
+      volumeMode: Filesystem
+    limits:
+      cpu: 200m
+      memory: 200Mi
+    requests:
+      cpu: 100m
+      memory: 100Mi
+  scaling:
+    cooldownPeriod: 60
+    behavior:
+      scaleUp:
+        policies:
+          - periodSeconds: 30
+            type: Percent
+            value: 100
+        stabilizationWindowSeconds: 30
+      scaleDown:
+        policies:
+          - periodSeconds: 60
+            type: Percent
+            value: 100
+        stabilizationWindowSeconds: 30

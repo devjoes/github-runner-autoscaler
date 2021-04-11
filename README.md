@@ -57,10 +57,12 @@ EOF
 kubectl delete -f ../crs.yaml
 sleep 3s
 make undeploy
+(echo runners;kubectl get ns | grep -Po 'test-repo\S+') | xargs kubectl delete ns
 
 for node in `kubectl get nodes -o yaml | grep -oP '10\.99\.\d+\.\d+' | sort | uniq`; do
 ssh setup@$node "sudo bash -c \"docker image ls | grep joeshearn | grep -Po '^\S+\s+\S+' | sed -E 's/\s+/:/g' | xargs docker image rm -f \""
 done
 
+kubectl create ns runners
 make deploy IMG=joeshearn/github-runner-autoscaler-operator:master
 kubectl apply -f ../crs.yaml
