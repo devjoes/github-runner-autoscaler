@@ -57,6 +57,7 @@ func main() {
 	go cmd.initHandlers(conf)
 	testProvider := cmd.makeK8sProvider(h)
 	cmd.Authorization.WithAlwaysAllowGroups("system:unauthenticated")
+	//TODO: Auth - remove above and use cmd.Authentication.ClientCert.ClientCA  or   - '--client-ca-file=/apiserver.local.config/certificates/ca'
 	cmd.WithCustomMetrics(testProvider)
 
 	klog.Infof(cmd.Message)
@@ -68,10 +69,6 @@ func main() {
 func (a *WorkflowMetricsAdapter) makeK8sProvider(orchestrator *host.Host) provider.CustomMetricsProvider {
 	return k8sProvider.NewProvider(orchestrator)
 }
-
-// func (a *WorkflowMetricsAdapter) makeKedaProvider(orchestrator *host.Host) {
-// 	kedaProvider.NewKedaProvider(orchestrator)
-// }
 
 func (a *WorkflowMetricsAdapter) initHandlers(conf config.Config) {
 	h := health.NewHealth(conf)

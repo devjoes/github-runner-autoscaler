@@ -309,17 +309,17 @@ func GenerateAuthTrigger(c *runnerv1alpha1.ActionRunnerMetrics) []client.Object 
 			SecretTargetRef: []keda.AuthSecretTargetRef{
 				keda.AuthSecretTargetRef{
 					Name:      certName,
-					Key:       "cert",
+					Key:       "tls.crt",
 					Parameter: "cert",
 				},
 				keda.AuthSecretTargetRef{
 					Name:      certName,
-					Key:       "ca",
+					Key:       "ca.crt",
 					Parameter: "ca",
 				},
 				keda.AuthSecretTargetRef{
 					Name:      certName,
-					Key:       "key",
+					Key:       "tls.key",
 					Parameter: "key",
 				},
 			},
@@ -596,8 +596,8 @@ const JsonApiServer = `{
 							"--secure-port=6443",
 							"--logtostderr=true",
 							"--incluster",
-							"--tls-cert-file=/apiserver.local.config/certificates/cert",
-							"--tls-private-key-file=/apiserver.local.config/certificates/key"
+							"--tls-cert-file=/apiserver.local.config/certificates/tls.crt",
+							"--tls-private-key-file=/apiserver.local.config/certificates/tls.key"
 						],
 						"image": "joeshearn/github-runner-autoscaler-apiserver:000021",
 						"imagePullPolicy": "IfNotPresent",

@@ -16,6 +16,11 @@ kubectl apply -f ../crs.yaml
 make run
 )
 
+## Known issues
+
+- The authentication isnt actually authentication
+- Runner labels are essentially backwards
+
 # This is only required for my home cluster
 
 for i in {0..3}; do
@@ -45,7 +50,7 @@ EOF
 - TODO: Make runners close session on shutdown
 - TODO: Have option to not output labels - could be sensitive
 
-* TODO: Get gittoken keys
+* TODO: Get GIT_TOKEN
 
 # Cleanup
 
