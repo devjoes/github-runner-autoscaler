@@ -1,10 +1,10 @@
 kind: ScaledActionRunnerCore
 apiVersion: runner.devjoes.com/v1alpha1
 metadata:
-  name: main
+  name: core
 spec:
   apiServerName: github-metrics-apiserver
-  apiServerNamespace: runners
-  sslCertSecret: cert
+  apiServerNamespace: github-metrics
+  sslCertSecret: tls-cert
   apiServerImage: "joeshearn/github-runner-autoscaler-apiserver:master"
-  prometheusNamespace: default
+  prometheusNamespace: monitoring

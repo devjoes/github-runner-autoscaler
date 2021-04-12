@@ -166,10 +166,10 @@ func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context
 
 func (r *ScaledActionRunnerReconciler) GetScaledActionRunnerCore(ctx context.Context, log logr.Logger) (*runnerv1alpha1.ScaledActionRunnerCore, error) {
 	metrics := &runnerv1alpha1.ScaledActionRunnerCore{}
-	err := r.Client.Get(ctx, types.NamespacedName{Namespace: "", Name: "main"}, metrics)
+	err := r.Client.Get(ctx, types.NamespacedName{Namespace: "", Name: "core"}, metrics)
 
 	if err != nil {
-		log.Error(err, "Errored getting ScaledActionRunnerCoreList resource called 'main'. It must be called 'main'")
+		log.Error(err, "Errored getting ScaledActionRunnerCoreList resource called 'core'. It must be called 'core'")
 		return nil, err
 	}
 

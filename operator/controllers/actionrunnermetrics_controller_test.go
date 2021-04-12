@@ -87,7 +87,7 @@ func getRunner(createApiServer bool, createMemcached bool, createAuthentication 
 
 	return &runnerv1alpha1.ScaledActionRunnerCore{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      "main",
+			Name:      "core",
 			Namespace: "ignored",
 		},
 		Spec: runnerv1alpha1.ScaledActionRunnerCoreSpec{

@@ -38,9 +38,9 @@ apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
   name: github-action-autoscaler-server
-  namespace: runners
+  namespace: github
 spec:
-  secretName: cert
+  secretName: tls-cert
   duration: 2160h
   renewBefore: 360h
   isCA: false
@@ -51,11 +51,11 @@ spec:
     - digital signature
     - key encipherment
     - server auth
-  commonName: github-metrics-apiserver.runners.svc.cluster.local
+  commonName: metrics.github.svc.cluster.local
   dnsNames:
-    - "github-metrics-apiserver.runners.svc.cluster.local"
-    - "github-metrics-apiserver.runners.svc"
-    - "github-metrics-apiserver"
+    - "metrics.github.svc.cluster.local"
+    - "metrics.github.svc"
+    - "metrics"
   issuerRef:
     name: ca-issuer
     kind: ClusterIssuer
