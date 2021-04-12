@@ -36,7 +36,7 @@ func getLabels(res metav1.Object) map[string]string {
 	ls["product"] = "github_actions_operator"
 	return ls
 }
-func GenerateMemcachedResources(c *runnerv1alpha1.ActionRunnerMetrics) ([]client.Object, error) {
+func GenerateMemcachedResources(c *runnerv1alpha1.ScaledActionRunnerCore) ([]client.Object, error) {
 	if !*c.Spec.CreateMemcached {
 		return []client.Object{}, nil
 	}
@@ -44,7 +44,7 @@ func GenerateMemcachedResources(c *runnerv1alpha1.ActionRunnerMetrics) ([]client
 	annotations := map[string]string{
 		CrdKey: getKey(c),
 	}
-	name := fmt.Sprintf("%s-cache", c.Spec.Name)
+	name := fmt.Sprintf("%s-cache", c.Spec.ApiServerName)
 	ls["app"] = "memcached"
 
 	var ss appsv1.StatefulSet
@@ -58,25 +58,25 @@ func GenerateMemcachedResources(c *runnerv1alpha1.ActionRunnerMetrics) ([]client
 	ss.Spec.Template.Labels = ls
 	ss.Spec.Selector.MatchLabels = ls
 	ss.Spec.Template.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchLabels = ls
-	ss.Spec.Template.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.Namespaces = []string{c.Spec.Namespace}
+	ss.Spec.Template.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.Namespaces = []string{c.Spec.ApiServerNamespace}
 	ss.Name = name
 	ss.Spec.Template.Name = name
 	ss.Spec.ServiceName = name
-	ss.Namespace = c.Spec.Namespace
+	ss.Namespace = c.Spec.ApiServerNamespace
 	ss.Spec.Template.Spec.Containers[0].Env[0].Value = "user"
 	if c.Spec.MemcachedUser != nil {
 		ss.Spec.Template.Spec.Containers[0].Env[0].Value = *c.Spec.MemcachedUser
 	}
 	ss.Spec.Template.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = name
-	if c.Spec.ExistingMemcacheCredsSecret != "" {
-		ss.Spec.Template.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = c.Spec.ExistingMemcacheCredsSecret
+	if c.Spec.MemcacheCredsSecret != "" {
+		ss.Spec.Template.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = c.Spec.MemcacheCredsSecret
 	}
 	ss.Spec.Replicas = &c.Spec.MemcachedReplicas
 	ss.Spec.Template.Spec.Containers[0].Image = c.Spec.MemcachedImage
 
 	svc := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: name,
-			Namespace:   c.Spec.Namespace,
+			Namespace:   c.Spec.ApiServerNamespace,
 			Labels:      ls,
 			Annotations: annotations,
 		},
@@ -96,7 +96,7 @@ func GenerateMemcachedResources(c *runnerv1alpha1.ActionRunnerMetrics) ([]client
 	var resources []client.Object
 	resources = append(resources, &ss, &svc)
 
-	if c.Spec.ExistingMemcacheCredsSecret == "" {
+	if c.Spec.MemcacheCredsSecret == "" {
 		secret := v1.Secret{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Secret",
@@ -104,7 +104,7 @@ func GenerateMemcachedResources(c *runnerv1alpha1.ActionRunnerMetrics) ([]client
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        name,
-				Namespace:   c.Spec.Namespace,
+				Namespace:   c.Spec.ApiServerNamespace,
 				Labels:      ls,
 				Annotations: annotations,
 			},
@@ -133,18 +133,18 @@ func getPass() string {
 	return pass.String()
 }
 
-func generateExternalMetricsDeployment(c *runnerv1alpha1.ActionRunnerMetrics, ls map[string]string) *appsv1.Deployment {
+func generateExternalMetricsDeployment(c *runnerv1alpha1.ScaledActionRunnerCore, ls map[string]string) *appsv1.Deployment {
 	var dep appsv1.Deployment
 	yaml.Unmarshal([]byte(JsonApiServer), &dep)
-	dep.Name = c.Spec.Name
-	dep.Spec.Template.Name = c.Spec.Name
+	dep.Name = c.Spec.ApiServerName
+	dep.Spec.Template.Name = c.Spec.ApiServerName
 	dep.Labels = ls
 	dep.Spec.Template.Labels = ls
 	dep.Spec.Selector.MatchLabels = ls
 
-	dep.Namespace = c.Spec.Namespace
-	dep.Spec.Replicas = &c.Spec.Replicas
-	dep.Spec.Template.Spec.Containers[0].Image = c.Spec.Image
+	dep.Namespace = c.Spec.ApiServerNamespace
+	dep.Spec.Replicas = &c.Spec.ApiServerReplicas
+	dep.Spec.Template.Spec.Containers[0].Image = c.Spec.ApiServerImage
 
 	var args []string
 	if len(c.Spec.Namespaces) == 0 {
@@ -157,14 +157,14 @@ func generateExternalMetricsDeployment(c *runnerv1alpha1.ActionRunnerMetrics, ls
 	mcServers := ""
 	if *c.Spec.CreateMemcached {
 		for i := 0; i < int(c.Spec.MemcachedReplicas); i++ {
-			mcServers = fmt.Sprintf("%s%s-cache-%d.%s-cache:11211", mcServers, c.Spec.Name, i, c.Spec.Name)
+			mcServers = fmt.Sprintf("%s%s-cache-%d.%s-cache:11211", mcServers, c.Spec.ApiServerName, i, c.Spec.ApiServerName)
 			if i+1 < int(c.Spec.MemcachedReplicas) {
 				mcServers = fmt.Sprintf("%s;", mcServers)
 			}
 		}
 	}
-	if c.Spec.ExistingMemcacheServers != "" {
-		mcServers = c.Spec.ExistingMemcacheServers
+	if c.Spec.MemcacheServers != "" {
+		mcServers = c.Spec.MemcacheServers
 	}
 	if mcServers != "" {
 		args = append(args, fmt.Sprintf("--memcached-servers=%s", mcServers))
@@ -174,25 +174,25 @@ func generateExternalMetricsDeployment(c *runnerv1alpha1.ActionRunnerMetrics, ls
 	}
 	args = append(args, "--v=10") //TODO: Extra args
 	dep.Spec.Template.Spec.Containers[0].Args = append(dep.Spec.Template.Spec.Containers[0].Args, args...)
-	dep.Spec.Template.Spec.ServiceAccountName = c.Spec.Name
-	dep.Spec.Template.Spec.Volumes[1].Secret.SecretName = fmt.Sprintf("%s-cert", c.Spec.Name)
-	if c.Spec.ExistingSslCertSecret != "" {
-		dep.Spec.Template.Spec.Volumes[1].Secret.SecretName = c.Spec.ExistingSslCertSecret
+	dep.Spec.Template.Spec.ServiceAccountName = c.Spec.ApiServerName
+	dep.Spec.Template.Spec.Volumes[1].Secret.SecretName = fmt.Sprintf("%s-cert", c.Spec.ApiServerName)
+	if c.Spec.SslCertSecret != "" {
+		dep.Spec.Template.Spec.Volumes[1].Secret.SecretName = c.Spec.SslCertSecret
 	}
 
-	dep.Spec.Template.Spec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = fmt.Sprintf("%s-cache", c.Spec.Name)
-	if c.Spec.ExistingMemcacheCredsSecret != "" {
-		dep.Spec.Template.Spec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = c.Spec.ExistingMemcacheCredsSecret
+	dep.Spec.Template.Spec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = fmt.Sprintf("%s-cache", c.Spec.ApiServerName)
+	if c.Spec.MemcacheCredsSecret != "" {
+		dep.Spec.Template.Spec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = c.Spec.MemcacheCredsSecret
 	} else if !*c.Spec.CreateMemcached {
 		dep.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}
 	}
 	return &dep
 }
 
-func generateExternalMetricsRbac(c *runnerv1alpha1.ActionRunnerMetrics, ls map[string]string) ([]*rbac.ClusterRole, []*rbac.ClusterRoleBinding, []*rbac.Role, []*rbac.RoleBinding) {
+func generateExternalMetricsRbac(c *runnerv1alpha1.ScaledActionRunnerCore, ls map[string]string) ([]*rbac.ClusterRole, []*rbac.ClusterRoleBinding, []*rbac.Role, []*rbac.RoleBinding) {
 	scaledactionrunnerViewer := rbac.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   fmt.Sprintf("%s:operator-scaledactionrunner-viewer-role", c.Spec.Name),
+			Name:   fmt.Sprintf("%s:operator-scaledactionrunner-viewer-role", c.Spec.ApiServerName),
 			Labels: ls,
 		},
 		RoleRef: rbac.RoleRef{
@@ -203,13 +203,13 @@ func generateExternalMetricsRbac(c *runnerv1alpha1.ActionRunnerMetrics, ls map[s
 		Subjects: []rbac.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      c.Spec.Name,
-				Namespace: c.Spec.Namespace,
+				Name:      c.Spec.ApiServerName,
+				Namespace: c.Spec.ApiServerNamespace,
 			}},
 	}
 	authDelegator := rbac.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   fmt.Sprintf("%s:system:auth-delegator", c.Spec.Name),
+			Name:   fmt.Sprintf("%s:system:auth-delegator", c.Spec.ApiServerName),
 			Labels: ls,
 		},
 		RoleRef: rbac.RoleRef{
@@ -220,14 +220,14 @@ func generateExternalMetricsRbac(c *runnerv1alpha1.ActionRunnerMetrics, ls map[s
 		Subjects: []rbac.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      c.Spec.Name,
-				Namespace: c.Spec.Namespace,
+				Name:      c.Spec.ApiServerName,
+				Namespace: c.Spec.ApiServerNamespace,
 			}},
 	}
 
 	apiserver := rbac.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   fmt.Sprintf("%s:apiserver-clusterrolebinding", c.Spec.Name),
+			Name:   fmt.Sprintf("%s:apiserver-clusterrolebinding", c.Spec.ApiServerName),
 			Labels: ls,
 		},
 		RoleRef: rbac.RoleRef{
@@ -238,14 +238,14 @@ func generateExternalMetricsRbac(c *runnerv1alpha1.ActionRunnerMetrics, ls map[s
 		Subjects: []rbac.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      c.Spec.Name,
-				Namespace: c.Spec.Namespace,
+				Name:      c.Spec.ApiServerName,
+				Namespace: c.Spec.ApiServerNamespace,
 			}},
 	}
 
 	authReader := rbac.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s:extension-apiserver-authentication-reader", c.Spec.Name),
+			Name:      fmt.Sprintf("%s:extension-apiserver-authentication-reader", c.Spec.ApiServerName),
 			Labels:    ls,
 			Namespace: "kube-system",
 		},
@@ -257,8 +257,8 @@ func generateExternalMetricsRbac(c *runnerv1alpha1.ActionRunnerMetrics, ls map[s
 		Subjects: []rbac.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      c.Spec.Name,
-				Namespace: c.Spec.Namespace,
+				Name:      c.Spec.ApiServerName,
+				Namespace: c.Spec.ApiServerNamespace,
 			}},
 	}
 	aggApiserverClusterRole := rbac.ClusterRole{
@@ -286,7 +286,7 @@ func generateExternalMetricsRbac(c *runnerv1alpha1.ActionRunnerMetrics, ls map[s
 	return []*rbac.ClusterRole{&aggApiserverClusterRole}, []*rbac.ClusterRoleBinding{&authDelegator, &apiserver, &scaledactionrunnerViewer}, []*rbac.Role{}, []*rbac.RoleBinding{&authReader}
 }
 
-func GenerateAuthTrigger(c *runnerv1alpha1.ActionRunnerMetrics) []client.Object {
+func GenerateAuthTrigger(c *runnerv1alpha1.ScaledActionRunnerCore) []client.Object {
 	if !*c.Spec.CreateAuthentication {
 		return []client.Object{}
 	}
@@ -294,13 +294,13 @@ func GenerateAuthTrigger(c *runnerv1alpha1.ActionRunnerMetrics) []client.Object 
 	annotations := map[string]string{
 		CrdKey: getKey(c),
 	}
-	certName := c.Spec.ExistingSslCertSecret
+	certName := c.Spec.SslCertSecret
 	if certName == "" {
 		//TODO: make cert in kedanamespace
 	}
 	authTrigger := keda.ClusterTriggerAuthentication{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        c.Spec.Name,
+			Name:        c.Spec.ApiServerName,
 			Namespace:   c.Spec.KedaNamespace,
 			Labels:      ls,
 			Annotations: annotations,
@@ -328,21 +328,21 @@ func GenerateAuthTrigger(c *runnerv1alpha1.ActionRunnerMetrics) []client.Object 
 	authTrigger.TypeMeta.SetGroupVersionKind(schema.FromAPIVersionAndKind("keda.sh/v1alpha1", "ClusterTriggerAuthentication"))
 	return []client.Object{&authTrigger}
 }
-func GeneratePrometheusServiceMonitor(c *runnerv1alpha1.ActionRunnerMetrics) []client.Object {
+func GeneratePrometheusServiceMonitor(c *runnerv1alpha1.ScaledActionRunnerCore) []client.Object {
 	if c.Spec.PrometheusNamespace == "" {
 		return []client.Object{}
 	}
 	var sm prom.ServiceMonitor
 	smJson := JsonServiceMonitor
-	smJson = strings.ReplaceAll(smJson, "sm-name", c.Spec.Name)
+	smJson = strings.ReplaceAll(smJson, "sm-name", c.Spec.ApiServerName)
 	smJson = strings.ReplaceAll(smJson, "sm-ns-name", c.Spec.PrometheusNamespace)
-	smJson = strings.ReplaceAll(smJson, "api-ns-name", c.Spec.Namespace)
+	smJson = strings.ReplaceAll(smJson, "api-ns-name", c.Spec.ApiServerNamespace)
 	err := json.Unmarshal([]byte(smJson), &sm)
 	fmt.Println(err)
 	sm.GetObjectKind().SetGroupVersionKind(schema.FromAPIVersionAndKind("monitoring.coreos.com/v1", "ServiceMonitor"))
 	return []client.Object{&sm}
 }
-func GenerateMetricsApiServer(c *runnerv1alpha1.ActionRunnerMetrics) []client.Object {
+func GenerateMetricsApiServer(c *runnerv1alpha1.ScaledActionRunnerCore) []client.Object {
 	if !*c.Spec.CreateApiServer {
 		return []client.Object{}
 	}
@@ -352,8 +352,8 @@ func GenerateMetricsApiServer(c *runnerv1alpha1.ActionRunnerMetrics) []client.Ob
 	dep.TypeMeta.SetGroupVersionKind(schema.FromAPIVersionAndKind("apps/v1", "Deployment"))
 	svc := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      c.Spec.Name,
-			Namespace: c.Spec.Namespace,
+			Name:      c.Spec.ApiServerName,
+			Namespace: c.Spec.ApiServerNamespace,
 			Labels:    ls,
 		},
 		Spec: v1.ServiceSpec{
@@ -377,8 +377,8 @@ func GenerateMetricsApiServer(c *runnerv1alpha1.ActionRunnerMetrics) []client.Ob
 	svc.TypeMeta.SetGroupVersionKind(schema.FromAPIVersionAndKind("v1", "Service"))
 	sa := v1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      c.Spec.Name,
-			Namespace: c.Spec.Namespace,
+			Name:      c.Spec.ApiServerName,
+			Namespace: c.Spec.ApiServerNamespace,
 			Labels:    ls,
 		},
 	}
@@ -397,8 +397,8 @@ func GenerateMetricsApiServer(c *runnerv1alpha1.ActionRunnerMetrics) []client.Ob
 				"groupPriorityMinimum":  100,
 				"versionPriority":       100,
 				"service": map[string]interface{}{
-					"name":      c.Spec.Name,
-					"namespace": c.Spec.Namespace,
+					"name":      c.Spec.ApiServerName,
+					"namespace": c.Spec.ApiServerNamespace,
 				},
 				"version": "v1beta1",
 			},
@@ -409,7 +409,7 @@ func GenerateMetricsApiServer(c *runnerv1alpha1.ActionRunnerMetrics) []client.Ob
 	return output
 }
 
-func getKey(c *runnerv1alpha1.ActionRunnerMetrics) string {
+func getKey(c *runnerv1alpha1.ScaledActionRunnerCore) string {
 	bin := "unknown"
 	if binPath, err := os.Readlink("/proc/self/exe"); err == nil {
 		if stats, err := os.Stat(binPath); err == nil {
@@ -419,9 +419,9 @@ func getKey(c *runnerv1alpha1.ActionRunnerMetrics) string {
 
 	j, _ := json.Marshal(c)
 	b := sha1.Sum(j)
-	return fmt.Sprintf("%s_%s_%s/%s%s", bin, base64.RawStdEncoding.EncodeToString(b[:]), c.Spec.Namespace, c.Spec.Name, c.ResourceVersion)
+	return fmt.Sprintf("%s_%s_%s/%s%s", bin, base64.RawStdEncoding.EncodeToString(b[:]), c.Spec.ApiServerNamespace, c.Spec.ApiServerName, c.ResourceVersion)
 }
-func setKey(c *runnerv1alpha1.ActionRunnerMetrics, dep *appsv1.Deployment, svc *v1.Service, sa *v1.ServiceAccount, cr []*rbac.ClusterRole, crb []*rbac.ClusterRoleBinding, r []*rbac.Role, rb []*rbac.RoleBinding, as *unstructured.Unstructured) []client.Object {
+func setKey(c *runnerv1alpha1.ScaledActionRunnerCore, dep *appsv1.Deployment, svc *v1.Service, sa *v1.ServiceAccount, cr []*rbac.ClusterRole, crb []*rbac.ClusterRoleBinding, r []*rbac.Role, rb []*rbac.RoleBinding, as *unstructured.Unstructured) []client.Object {
 	key := getKey(c)
 	process := func(o client.Object) client.Object {
 		anns := o.GetAnnotations()

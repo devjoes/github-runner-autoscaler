@@ -116,7 +116,7 @@ func (c *Config) AddFlags() {
 	c.flagInClusterConfig = flag.Bool("incluster", false, "Ignore kubeconfig, connecting from within a cluster.")
 	c.flagCacheWindow = flag.String("cache-window", "1m", "How long to cache queue lengths for")
 	c.flagCacheWindowWhenEmpty = flag.String("cache-windowwhen-empty", "30s", "How long to cache queue lengths for when all runners may be offline")
-	c.flagResyncIntervalStr = flag.String("resync-interval", "5m", "How often to fully reload all ScaledActionRunner CRDs")
+	c.flagResyncIntervalStr = flag.String("resync-interval", "1m", "How often to fully reload all ScaledActionRunner CRDs")
 	c.flagMemcachedServers = flag.String("memcached-servers", "", "Memcached servers to use. If unspecified a local in memory cache is used.")
 	c.flagMemcachedUser = flag.String("memcached-user", "", "Memcached user to use.")
 	c.flagMemcachedPass = flag.String("memcached-password", "", "Memcached password to use.")

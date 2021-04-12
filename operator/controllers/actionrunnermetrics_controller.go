@@ -33,16 +33,16 @@ import (
 	"github.com/devjoes/github-runner-autoscaler/operator/armgenerator"
 )
 
-// ActionRunnerMetricsReconciler reconciles a ActionRunnerMetrics object
-type ActionRunnerMetricsReconciler struct {
+// ScaledActionRunnerCoreReconciler reconciles a ScaledActionRunnerCore object
+type ScaledActionRunnerCoreReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=runner.devjoes.com,resources=actionrunnermetrics,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=runner.devjoes.com,resources=actionrunnermetrics/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=runner.devjoes.com,resources=actionrunnermetrics/finalizers,verbs=update
+// +kubebuilder:rbac:groups=runner.devjoes.com,resources=scaledactionrunnercore,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=runner.devjoes.com,resources=scaledactionrunnercore/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=runner.devjoes.com,resources=scaledactionrunnercore/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=statefulsets;deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=secrets;serviceaccounts;services;configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs=get;list;watch;create;update;patch;delete
@@ -51,16 +51,16 @@ type ActionRunnerMetricsReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the ActionRunnerMetrics object against the actual cluster state, and then
+// the ScaledActionRunnerCore object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
-func (r *ActionRunnerMetricsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("actionrunnermetrics", req.NamespacedName)
+func (r *ScaledActionRunnerCoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := r.Log.WithValues("scaledactionrunnercore", req.NamespacedName)
 	changed := false
-	metrics, err := r.GetActionRunnerMetrics(ctx, log, req)
+	metrics, err := r.GetScaledActionRunnerCore(ctx, log, req)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -106,7 +106,7 @@ func (r *ActionRunnerMetricsReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	return ctrl.Result{Requeue: changed}, nil
 }
-func (r *ActionRunnerMetricsReconciler) CreateUpdateOrReplace(ctx context.Context, log logr.Logger, crd *runnerv1alpha1.ActionRunnerMetrics, obj client.Object) (bool, error) {
+func (r *ScaledActionRunnerCoreReconciler) CreateUpdateOrReplace(ctx context.Context, log logr.Logger, crd *runnerv1alpha1.ScaledActionRunnerCore, obj client.Object) (bool, error) {
 	logMsg := func(msg string, obj client.Object) {
 		label := fmt.Sprintf("%s %s/%s", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName())
 		log.Info(fmt.Sprintf(msg, label))
@@ -156,26 +156,26 @@ func (r *ActionRunnerMetricsReconciler) CreateUpdateOrReplace(ctx context.Contex
 	}
 	return true, nil
 }
-func (r *ActionRunnerMetricsReconciler) GetActionRunnerMetrics(ctx context.Context, log logr.Logger, req ctrl.Request) (*runnerv1alpha1.ActionRunnerMetrics, error) {
-	actionRunnerMetrics := &runnerv1alpha1.ActionRunnerMetrics{}
-	err := r.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, actionRunnerMetrics)
+func (r *ScaledActionRunnerCoreReconciler) GetScaledActionRunnerCore(ctx context.Context, log logr.Logger, req ctrl.Request) (*runnerv1alpha1.ScaledActionRunnerCore, error) {
+	scaledActionRunnerCore := &runnerv1alpha1.ScaledActionRunnerCore{}
+	err := r.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, scaledActionRunnerCore)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("ActionRunnerMetrics resource not found. Ignoring since object must be deleted")
+			log.Info("ScaledActionRunnerCore resource not found. Ignoring since object must be deleted")
 			return nil, nil
 		}
-		log.Error(err, "Failed to get ActionRunnerMetrics")
+		log.Error(err, "Failed to get ScaledActionRunnerCore")
 		return nil, err
 	}
 
-	actionRunnerMetrics.Setup()
-	return actionRunnerMetrics, nil
+	scaledActionRunnerCore.Setup()
+	return scaledActionRunnerCore, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ActionRunnerMetricsReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ScaledActionRunnerCoreReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&runnerv1alpha1.ActionRunnerMetrics{}).
+		For(&runnerv1alpha1.ScaledActionRunnerCore{}).
 		Complete(r)
 }

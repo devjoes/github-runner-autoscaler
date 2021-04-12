@@ -1,24 +1,24 @@
-# permissions for end users to edit actionrunnermetrics.
+# permissions for end users to edit scaledactionrunnercore.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: actionrunnermetrics-editor-role
+  name: scaledactionrunnercore-editor-role
 rules:
-- apiGroups:
-  - runner.devjoes.com
-  resources:
-  - actionrunnermetrics
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - runner.devjoes.com
-  resources:
-  - actionrunnermetrics/status
-  verbs:
-  - get
+  - apiGroups:
+      - runner.devjoes.com
+    resources:
+      - scaledactionrunnercore
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - runner.devjoes.com
+    resources:
+      - scaledactionrunnercore/status
+    verbs:
+      - get

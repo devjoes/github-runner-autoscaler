@@ -97,12 +97,12 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
 	}
-	if err = (&controllers.ActionRunnerMetricsReconciler{
+	if err = (&controllers.ScaledActionRunnerCoreReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ActionRunnerMetrics"),
+		Log:    ctrl.Log.WithName("controllers").WithName("ScaledActionRunnerCore"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ActionRunnerMetrics")
+		setupLog.Error(err, "unable to create controller", "controller", "ScaledActionRunnerCore")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

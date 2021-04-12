@@ -1,0 +1,13 @@
+name: deploy
+
+on:
+  workflow_run:
+    workflows: ["build"]
+    types: [completed]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, deploy]
+
+    steps:
+      - run: echo "This doesn't really do anything"

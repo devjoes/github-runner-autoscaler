@@ -1,0 +1,115 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: scaledactionrunnercore.runner.devjoes.com
+spec:
+  group: runner.devjoes.com
+  names:
+    kind: ScaledActionRunnerCore
+    listKind: ScaledActionRunnerCoreList
+    plural: scaledactionrunnercore
+    singular: scaledactionrunnercore
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ScaledActionRunnerCore is the Schema for the scaledactionrunnercore
+          API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ScaledActionRunnerCoreSpec defines the desired state of ScaledActionRunnerCore
+            properties:
+              apiServerImage:
+                type: string
+              apiServerName:
+                type: string
+              apiServerNamespace:
+                description: Foo is an example field of ScaledActionRunnerCore. Edit
+                  ScaledActionRunnerCore_types.go to remove/update
+                type: string
+              apiServerReplicas:
+                format: int32
+                type: integer
+              cacheWindow:
+                description: A Duration represents the elapsed time between two instants
+                  as an int64 nanosecond count. The representation limits the largest
+                  representable duration to approximately 290 years.
+                format: int64
+                type: integer
+              cacheWindowWhenEmpty:
+                description: A Duration represents the elapsed time between two instants
+                  as an int64 nanosecond count. The representation limits the largest
+                  representable duration to approximately 290 years.
+                format: int64
+                type: integer
+              createApiServer:
+                type: boolean
+              createAuthentication:
+                type: boolean
+              createMemcached:
+                type: boolean
+              kedaNamespace:
+                type: string
+              memcacheCredsSecret:
+                type: string
+              memcacheServers:
+                type: string
+              memcacheUser:
+                type: string
+              memcachedImage:
+                type: string
+              memcachedReplicas:
+                format: int32
+                type: integer
+              namespaces:
+                items:
+                  type: string
+                type: array
+              prometheusNamespace:
+                type: string
+              resyncInterval:
+                description: A Duration represents the elapsed time between two instants
+                  as an int64 nanosecond count. The representation limits the largest
+                  representable duration to approximately 290 years.
+                format: int64
+                type: integer
+              sslCertSecret:
+                type: string
+            required:
+            - apiServerName
+            - apiServerNamespace
+            - sslCertSecret
+            type: object
+          status:
+            description: ScaledActionRunnerCoreStatus defines the observed state of
+              ScaledActionRunnerCore
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

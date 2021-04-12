@@ -1,6 +1,6 @@
 package config
 
-//TODO: Poss seperate this from the config class
+//TODO: Poss seperate this from the config package
 import (
 	"context"
 	"encoding/json"
@@ -137,12 +137,17 @@ func (c *Config) syncWorkflows(k8sClient kubernetes.Interface, runnerclient runn
 
 func (c *Config) setupWatcher(k8sClient kubernetes.Interface, runnerClient runnerclient.IScaledActionRunnerClient) {
 	for {
+		//TODO: This doesnt seem to work
+		// There is an issue where the watcher ends up watching a very old resourceVersion
+		// So every 5mins we stop the old one and start a new one
+		reWatch := time.Now().Add(time.Minute * 5)
 		w, err := runnerClient.Watch(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			klog.Errorf("Error whilst watching namespace %s: %s", runnerClient.GetNs(), err.Error())
-			return
+			time.Sleep(time.Minute)
+			continue
 		}
-		for {
+		for time.Now().Before(reWatch) {
 			var event watch.Event
 			event, ok := <-w.ResultChan()
 			if !ok {
@@ -183,6 +188,7 @@ func (c *Config) setupWatcher(k8sClient kubernetes.Interface, runnerClient runne
 				klog.Errorf("%s/%s was %s but resulted in %s", wf.Namespace, wf.Name, event.Type, err.Error())
 			}
 		}
+		w.Stop()
 	}
 }
 

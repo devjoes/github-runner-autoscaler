@@ -49,6 +49,7 @@ EOF
 - TODO: Cert auth is just used as a way of fudging TLS
 - TODO: Make runners close session on shutdown
 - TODO: Have option to not output labels - could be sensitive
+- TODO: Watcher issue
 
 * TODO: Get GIT_TOKEN
 

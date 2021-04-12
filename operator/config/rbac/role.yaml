@@ -146,7 +146,7 @@ rules:
 - apiGroups:
   - runner.devjoes.com
   resources:
-  - actionrunnermetrics
+  - scaledactionrunnercore
   verbs:
   - create
   - delete
@@ -158,13 +158,13 @@ rules:
 - apiGroups:
   - runner.devjoes.com
   resources:
-  - actionrunnermetrics/finalizers
+  - scaledactionrunnercore/finalizers
   verbs:
   - update
 - apiGroups:
   - runner.devjoes.com
   resources:
-  - actionrunnermetrics/status
+  - scaledactionrunnercore/status
   verbs:
   - get
   - patch

@@ -96,7 +96,7 @@ var _ = BeforeSuite(func(done Done) {
 	err = (r).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
-	r2 := &ActionRunnerMetricsReconciler{
+	r2 := &ScaledActionRunnerCoreReconciler{
 		Client: k8sManager.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("ScaledActionRunner"),
 		Scheme: k8sManager.GetScheme(),

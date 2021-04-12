@@ -57,7 +57,7 @@ func main() {
 	go cmd.initHandlers(conf)
 	testProvider := cmd.makeK8sProvider(h)
 	cmd.Authorization.WithAlwaysAllowGroups("system:unauthenticated")
-	//TODO: Auth - remove above and use cmd.Authentication.ClientCert.ClientCA  or   - '--client-ca-file=/apiserver.local.config/certificates/ca'
+	//TODO: Auth - currently this is required for keda. Could remove above and use cmd.Authentication.ClientCert.ClientCA  or   - '--client-ca-file=/apiserver.local.config/certificates/ca'
 	cmd.WithCustomMetrics(testProvider)
 
 	klog.Infof(cmd.Message)

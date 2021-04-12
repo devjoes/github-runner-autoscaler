@@ -94,12 +94,12 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	if metricsName == "" || metricsNamespace == "" {
-		metrics, err := r.GetActionRunnerMetrics(ctx, log)
+		metrics, err := r.GetScaledActionRunnerCore(ctx, log)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		metricsName = metrics.Spec.Name
-		metricsNamespace = metrics.Spec.Namespace
+		metricsName = metrics.Spec.ApiServerName
+		metricsNamespace = metrics.Spec.ApiServerNamespace
 	}
 
 	metricsEndpoint := fmt.Sprintf("%s.%s.svc", metricsName, metricsNamespace)
@@ -164,12 +164,12 @@ func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context
 	return scaledActionRunner, nil
 }
 
-func (r *ScaledActionRunnerReconciler) GetActionRunnerMetrics(ctx context.Context, log logr.Logger) (*runnerv1alpha1.ActionRunnerMetrics, error) {
-	metrics := &runnerv1alpha1.ActionRunnerMetrics{}
+func (r *ScaledActionRunnerReconciler) GetScaledActionRunnerCore(ctx context.Context, log logr.Logger) (*runnerv1alpha1.ScaledActionRunnerCore, error) {
+	metrics := &runnerv1alpha1.ScaledActionRunnerCore{}
 	err := r.Client.Get(ctx, types.NamespacedName{Namespace: "", Name: "main"}, metrics)
 
 	if err != nil {
-		log.Error(err, "Errored getting ActionRunnerMetricsList resource called 'main'. It must be called 'main'")
+		log.Error(err, "Errored getting ScaledActionRunnerCoreList resource called 'main'. It must be called 'main'")
 		return nil, err
 	}
 
