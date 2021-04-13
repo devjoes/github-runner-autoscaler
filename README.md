@@ -151,7 +151,7 @@ spec:
   apiServerName: metrics
   apiServerNamespace: github
   sslCertSecret: tls-cert
-  apiServerImage: "joeshearn/github-runner-autoscaler-apiserver:master"
+  apiServerImage: "joeshearn/github-runner-autoscaler-apiserver:latest"
   prometheusNamespace: monitoring
 EOF
 ```
