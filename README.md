@@ -45,7 +45,7 @@ We can then install the operator (this will track the latest tag):
 kubectl apply -f install.yaml
 ```
 
-We are going to create an API service called 'metrics' in the namespace 'github' before doing this we need to create the namespace and a certificate for it to use:
+We are going to create an API server called 'metrics' in the namespace 'github' before doing this we need to create the namespace and a certificate for it to use:
 
 ```
 kubectl create ns github
