@@ -39,16 +39,13 @@ helm install keda kedacore/keda -n keda --set prometheus.operator.enabled=true -
 helm install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set installCRDs=true
 ```
 
-We can then install the operator like this:
+We can then install the operator (this will track the latest tag):
 
 ```
-cd operator
-make install deploy
+kubectl apply -f install.yaml
 ```
 
-TODO: Come up with a proper way of packaging the operator
-
-We are going to create an API service called 'metrics' in the namespace 'github' before doing this we need to create the namespace and a certificate for it to use like this:
+We are going to create an API service called 'metrics' in the namespace 'github' before doing this we need to create the namespace and a certificate for it to use:
 
 ```
 kubectl create ns github
@@ -122,7 +119,7 @@ metadata:
   name: github-action-autoscaler-client
   namespace: keda
 spec:
-  secretName: cert
+  secretName: tls-cert
   duration: 2160h # 90d
   renewBefore: 360h # 15d
   keySize: 2048
@@ -141,3 +138,144 @@ EOF
 ```
 
 This will create a self signed CA certificate in the cert-manager namespace and expose a cluster wide issuer. It then creates a certificate for the API server and a certificate for KEDA. These certificates aren't actually used for authentication, API servers are meant to use SecureServing and KEDA's external metrics scaler doesn't support self signed certificates.
+
+Now we can create the ScaledActionRunnerCore CR. Because this CR has to create a cluster wide APIService called "v1beta1.custom.metrics.k8s.io" there can only be one ScaledActionRunnerCore object in the cluster. To ensure this is the case ScaledActionRunnerCore is a cluster wide object and has to be named 'core', if it isn't named core then it will be ignored.
+
+```
+kubectl apply -f - <<EOF
+kind: ScaledActionRunnerCore
+apiVersion: runner.devjoes.com/v1alpha1
+metadata:
+  name: core
+spec:
+  apiServerName: metrics
+  apiServerNamespace: github
+  sslCertSecret: tls-cert
+  apiServerImage: "joeshearn/github-runner-autoscaler-apiserver:master"
+  prometheusNamespace: monitoring
+EOF
+```
+
+After a short while we should see some pods like this:
+
+```
+kubectl get po -n github
+NAME                       READY   STATUS    RESTARTS   AGE
+metrics-78cfb79876-cr9ft   1/1     Running   0          57s
+metrics-78cfb79876-jgts5   1/1     Running   0          57s
+metrics-cache-0            1/1     Running   0          56s
+metrics-cache-1            1/1     Running   0          28s
+```
+
+We now need to onboard our first repo. We will create a very simple workflow and add it to a github repo.
+
+```
+(
+cd `mktemp -d`
+mkdir -p example-repo/.github/workflows
+cd example-repo
+git init
+cat > .github/workflows/main.yml <<EOF
+name: main
+on:
+  push:
+jobs:
+  main:
+    runs-on: [self-hosted]
+    steps:
+      - run: sleep 2m; echo Finished
+EOF
+hub create
+git add .
+git commit -m "this build will fail"
+git push --set-upstream origin master
+)
+```
+
+This will create a repository which will build on push, the build will fail. To fix this we need to create a ScaledActionRunner and some secrets. You will need two PAT tokens first. One PAT token will be for an account that has admin access to the repo, the other will be for an account that has read only access. (For testing purposes you can just use the same admin PAT token.)
+
+There is a node application which will handle the creation of the secrets and ScaledActionRunner. Update owner, read_token and admin_token
+
+```
+owner=
+read_token=/path/to/file/containing/token
+admin_token=/path/to/file/containing/token
+node examples/add-runner.js -n "example-repo" -o "$owner" -r "example-repo" -m 4 -p "$read_token" -a "$admin_token" -f example-repo.yaml
+```
+
+This will have created a file called example-repo.yaml which will provision a runner called example-repo that can scale up to 4 replicas and deploy it:
+
+```
+kubectl create ns example-repo
+kubectl apply -n example-repo -f example-repo.yaml
+```
+
+You should then see that several resources:
+
+```
+kubectl get statefulset,scaledobject,scaledactionrunner -n example-repo
+NAME                            READY   AGE
+statefulset.apps/example-repo   0/0     57s
+
+NAME                                SCALETARGETKIND       SCALETARGETNAME   MIN   MAX   TRIGGERS      AUTHENTICATION   READY   ACTIVE    AGE
+scaledobject.keda.sh/example-repo   apps/v1.StatefulSet   example-repo      0     4     metrics-api   metrics          False   Unknown   58s
+
+NAME                                                 AGE
+scaledactionrunner.runner.devjoes.com/example-repo   58s
+```
+
+If you now re-trigger the build that failed you should see the metrics and the stateful set should scale up:
+
+```
+kubectl get --raw '/apis/custom.metrics.k8s.io/v1beta1/namespaces/example-repo/Scaledactionrunners/example-repo/*' | jq .
+{
+  "kind": "MetricValueList",
+  "apiVersion": "custom.metrics.k8s.io/v1beta1",
+  "metadata": {
+    "selfLink": "/apis/custom.metrics.k8s.io/v1beta1/namespaces/example-repo/Scaledactionrunners/example-repo/%2A"
+  },
+  "items": [
+    {
+      "describedObject": {
+        "kind": "ScaledActionRunner",
+        "namespace": "example-repo",
+        "name": "example-repo",
+        "apiVersion": "v1alpha1"
+      },
+      "metricName": "example-repo",
+      "timestamp": "2021-04-13T10:14:35Z",
+      "value": "2",
+      "selector": {
+        "matchLabels": {
+          "cr_name": "example-repo",
+          "cr_namespace": "example-repo",
+          "cr_owner": "devjoes",
+          "cr_repo": "example-repo",
+          "wf_id": "7939907",
+          "wf_name": "main",
+          "wf_runs_on": "self-hosted",
+          "wf_runs_on_self-hosted": "self-hosted"
+        }
+      }
+    }
+  ]
+}
+```
+
+When the StatefulSet is first scaled up it will have to create persistant volumes which may take a while. But eventually you should see pods created:
+
+```
+kubectl get statefulset -n example-repo
+NAME           READY   AGE
+example-repo   2/2     3m4s
+kubectl logs example-repo-0 -n example-repo
+Starting Runner listener with startup type: service
+Started listener process, pid: 16
+Started running service
+
+√ Connected to GitHub
+
+2021-04-13 10:38:43Z: Listening for Jobs
+2021-04-13 10:38:47Z: Running job: main
+2021-04-13 10:40:51Z: Job main completed with result: Succeeded
+```
