@@ -289,66 +289,107 @@ Configuration can be applied using the two CRs ScaledActionRunnerCore (for clust
 ### ScaledActionRunnerCore
 
 ```
-type ScaledActionRunnerCoreSpec struct {
-	ApiServerNamespace   string        `json:"apiServerNamespace"`
-	ApiServerName        string        `json:"apiServerName"`
-	ApiServerImage       string        `json:"apiServerImage,omitempty"`
-	ApiServerReplicas    int32         `json:"apiServerReplicas,omitempty"`
-	CreateApiServer      *bool         `json:"createApiServer,omitempty"`
-	CreateMemcached      *bool         `json:"createMemcached,omitempty"`
-	CreateAuthentication *bool         `json:"createAuthentication,omitempty"`
-	PrometheusNamespace  string        `json:"prometheusNamespace,omitempty"`
-	MemcachedReplicas    int32         `json:"memcachedReplicas,omitempty"`
-	MemcachedImage       string        `json:"memcachedImage,omitempty"`
-	SslCertSecret        string        `json:"sslCertSecret"`
-	KedaNamespace        string        `json:"kedaNamespace,omitempty"`
-	MemcacheCredsSecret  string        `json:"memcacheCredsSecret,omitempty"`
-	MemcachedUser        *string       `json:"memcacheUser,omitempty"`
-	MemcacheServers      string        `json:"memcacheServers,omitempty"`
-	CacheWindow          time.Duration `json:"cacheWindow,omitempty"`
-	CacheWindowWhenEmpty time.Duration `json:"cacheWindowWhenEmpty,omitempty"`
-	ResyncInterval       time.Duration `json:"resyncInterval,omitempty"`
-	Namespaces           []string      `json:"namespaces,omitempty"`
-}
+kind: ScaledActionRunnerCore
+apiVersion: runner.devjoes.com/v1alpha1
+metadata:
+  name: core
+spec:
+  apiServerImage:         # Optional. Default: joeshearn/github-runner-autoscaler-apiserver:latest
+  apiServerName:
+  apiServerNamespace:
+  apiServerReplicas:      # Optional. Default: 2
+  createApiServer:        # Optional. Default: true
+  createMemcached:        # Optional. Default: true
+  createAuthentication:   # Optional. Default: true
+  prometheusNamespace:    # Optional. If missing then a ServiceMonitor will not be created
+  memcachedReplicas:      # Optional. Default: 2
+  memcachedImage:         # Optional. Default: docker.io/bitnami/memcached:1.6.9-debian-10-r86
+  sslCertSecret:
+  kedaNamespace:          # Optional. Default: keda
+  memcacheCredsSecret:    # Optional. Only required if createMemcached==false
+  memcachedUser:          # Optional. Only required if createMemcached==false
+  memcacheServers:        # Optional. Only required if createMemcached==false
+  cacheWindow:            # Optional. Default: 1m
+  cacheWindowWhenEmpty:   # Optional. Default: 2m
+  resyncInterval:         # Optional. Default: 1m
+  namespaces:             # Optional. Default: []
 ```
 
 Most of the fields are self explanatory except maybe:
 
-- MemcacheCredsSecret, MemcachedUser, MemcacheServers are only used when CreateMemcached is set to false - this would allow you to use an existing instance of Memcached.
-- CacheWindow, CacheWindowWhenEmpty define how often metrics should be retrieved from Github. Because each API request costs credits we want to minimize the number of requests. So if we assume that most projects are not going to be actively developed most of the time then we could set CacheWindowWhenEmpty to 2 minutes. This means that the initial scaling from 0 to 1 replicas might take up to 2 minutes, but we can configure the cooldown period to 12 hours so once a runner is running then at least 1 replica will stay running for the rest of the day.
-- ResyncInterval is how often all of the ScaledActionRunner objects should be retrieved from the cluster (there is also a watch.)
-- Namespaces is a list of namespaces to watch, if it is empty then all namespaces will be watched.
+- memcacheCredsSecret, memcachedUser, memcacheServers are only used when CreateMemcached is set to false - this would allow you to use an existing instance of Memcached.
+- cacheWindow, cacheWindowWhenEmpty define how often metrics should be retrieved from Github. Because each API request costs credits we want to minimize the number of requests. So if we assume that most projects are not going to be actively developed most of the time then we could set CacheWindowWhenEmpty to 2 minutes. This means that the initial scaling from 0 to 1 replicas might take up to 2 minutes, but we can configure the cooldown period to 12 hours so once a runner is running then at least 1 replica will stay running for the rest of the day.
+- resyncInterval is how often all of the ScaledActionRunner objects should be retrieved from the cluster (there is also a watch.)
+- namespaces is a list of namespaces to watch, if it is empty then all namespaces will be watched.
 
 ### ScaledActionRunner
 
 ```
-type ScaledActionRunnerSpec struct {
-	MaxRunners        int32    `json:"maxRunners"`
-	MinRunners        int32    `json:"minRunners,omitempty"`
-	RunnerSecrets     []string `json:"runnerSecrets"`
-	GithubTokenSecret string   `json:"githubTokenSecret"`
-	Owner             string   `json:"owner"`
-	Repo              string   `json:"repo"`
-	Scaling           *Scaling `json:"scaling,omitempty"`
-	ScaleFactor       *string  `json:"scaleFactor,omitempty"`
-	Selector          *string  `json:"selector,omitempty"`
-	Runner            *Runner  `json:"runner,omitempty"`
-}
+kind: ScaledActionRunner
+apiVersion: runner.devjoes.com/v1alpha1
+metadata:
+  name: core
+  namespace: default
+spec:
+  maxRunners:
+  minRunners:                 # Optional. Default: 0
+  runnerSecrets: []           # Populated by add-runner.js
+  githubTokenSecret:          # Populated by add-runner.js
+  owner:
+  repo:
+  scaling:                    # Optional
+    behavior:
+    pollingInterval:
+    cooldownPeriod:
+  scaleFactor:                # Optional. Default: "0.8"
+  selector:                   # Optional. Default: "*"
+  runner:                     # Optional
+    image:                    # Optional. Default: joeshearn/action-runner-sideloaded-config:latest
+    labels:                   # Optional. Default: []
+    workVolumeClaimTemplate:  # Optional. Default is a 20Gi volume on default storage.
+    limits:                   # Optional. Default: {cpu:2,memory:2000Mi}
+    requests:                 # Optional. Default: {cpu:200m,memory:200Mi}
 
-type Runner struct {
-	Image                   string                                     `json:"image,omitempty"`
-	Labels                  string                                     `json:"labels,omitempty"`
-	WorkVolumeClaimTemplate *corev1.PersistentVolumeClaimSpec          `json:"workVolumeClaimTemplate,omitempty"`
-	Limits                  *map[corev1.ResourceName]resource.Quantity `json:"limits,omitempty"`
-	Requests                *map[corev1.ResourceName]resource.Quantity `json:"requests,omitempty"`
-}
-
-type Scaling struct {
-	Behavior        *autoscalingv2beta2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
-	PollingInterval *int32                                              `json:"pollingInterval,omitempty"`
-	CooldownPeriod  *int32                                              `json:"cooldownPeriod,omitempty"`
-}
 ```
 
 Again most of the fields are self explanatory except maybe:
-TODO:
+
+- ScaleFactor controls how the number of queued jobs relates to the number of runners. Setting it to 0 makes it scale linearly up to maxRunners any other factor gets passed to [a simplified version of the logistic function](https://www.desmos.com/calculator/o6mpkilyxl) which allows the number of runners to be scaled up eagerly in response to demand.
+- Selector allows you to specify which metrics will be used. For instance if you wanted to target a specific workflow then you could specify "wf_name=main" or if you wanted to scale on workflows which target runners with the runner label "deploy" then you could specify "wf_runs_on_deploy".
+- Runner allows you to modify the StatefulSet that is produced, you can specify the image, labels, requests, limits and PersistantVolumeClaim
+- Scaling allows you to modify the [ScaledObject](https://keda.sh/docs/1.4/concepts/scaling-deployments/#scaledobject-spec) that is created
+
+## Rate limits
+
+A PAT token can make 5000 requests per hour. This limit is per **account** not per token. The Secret referenced by githubTokenSecret usually looks like this:
+
+```
+kind: Secret
+apiVersion: v1
+metadata:
+  name: example
+  namespace: default
+data:
+  token: bm8gSSdtIG5vdCB0aGF0IHN0dXBpZCEhISEhCg==
+```
+
+Additional tokens can be added like this though (a token will be picked at random):
+
+```
+data:
+  token: bm8gSSdtIG5vdCB0aGF0IHN0dXBpZCEhISEhCg==
+  token1: bm8gSSdtIG5vdCB0aGF0IHN0dXBpZCEhISEhCg==
+  tokenfoo: bm8gSSdtIG5vdCB0aGF0IHN0dXBpZCEhISEhCg==
+```
+
+## Metrics
+
+The following prometheus metrics are exposed:
+
+| Name                                  | Description                                  | Labels                                     |
+| ------------------------------------- | -------------------------------------------- | ------------------------------------------ |
+| workflow_queue_length                 | Number of jobs in queue when queried         | name, cache_hit, failed                    |
+| workflow_queue_queries                | Number of times a workflow queue is queried  | name, cache_hit, failed                    |
+| workflow_queue_length_filtered        | The number of queued jobs filtered by labels | name, selector, wf_id, wf_name, wf_runs_on |
+| workflow_queue_length_filtered_scaled | The number of queued jobs filtered by labels | name, selector, wf_id, wf_name, wf_runs_on |
+| github_credits                        | Remaining rate limit creds by token          | token_id, token_name                       |

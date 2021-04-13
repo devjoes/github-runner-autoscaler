@@ -75,10 +75,10 @@ func (a *ScaledActionRunnerCore) Setup() {
 		a.Spec.CacheWindow, _ = time.ParseDuration("1m")
 	}
 	if a.Spec.CacheWindowWhenEmpty.Milliseconds() == 0 {
-		a.Spec.CacheWindowWhenEmpty, _ = time.ParseDuration("30s")
+		a.Spec.CacheWindowWhenEmpty, _ = time.ParseDuration("2m")
 	}
 	if a.Spec.ResyncInterval.Milliseconds() == 0 {
-		a.Spec.ResyncInterval, _ = time.ParseDuration("5m")
+		a.Spec.ResyncInterval, _ = time.ParseDuration("1m")
 	}
 	if a.Spec.MemcachedReplicas == 0 {
 		a.Spec.MemcachedReplicas = 2
