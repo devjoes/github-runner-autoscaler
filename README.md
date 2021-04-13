@@ -39,12 +39,6 @@ helm install keda kedacore/keda -n keda --set prometheus.operator.enabled=true -
 helm install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set installCRDs=true
 ```
 
-We can then install the operator (this will track the latest tag):
-
-```
-kubectl apply -f install.yaml
-```
-
 We are going to create an API server called 'metrics' in the namespace 'github' before doing this we need to create the namespace and a certificate for it to use:
 
 ```
@@ -138,6 +132,14 @@ EOF
 ```
 
 This will create a self signed CA certificate in the cert-manager namespace and expose a cluster wide issuer. It then creates a certificate for the API server and a certificate for KEDA. These certificates aren't actually used for authentication, API servers are meant to use SecureServing and KEDA's external metrics scaler doesn't support self signed certificates.
+
+### Installation
+
+We can then install the operator (this will track the latest tag):
+
+```
+kubectl apply -f install.yaml
+```
 
 Now we can create the ScaledActionRunnerCore CR. Because this CR has to create a cluster wide APIService called "v1beta1.custom.metrics.k8s.io" there can only be one ScaledActionRunnerCore object in the cluster. To ensure this is the case ScaledActionRunnerCore is a cluster wide object and has to be named 'core', if it isn't named core then it will be ignored.
 
@@ -279,3 +281,74 @@ Started running service
 2021-04-13 10:38:47Z: Running job: main
 2021-04-13 10:40:51Z: Job main completed with result: Succeeded
 ```
+
+## Configuration
+
+Configuration can be applied using the two CRs ScaledActionRunnerCore (for cluster wide config) and ScaledActionRunner (for individual runner config.)
+
+### ScaledActionRunnerCore
+
+```
+type ScaledActionRunnerCoreSpec struct {
+	ApiServerNamespace   string        `json:"apiServerNamespace"`
+	ApiServerName        string        `json:"apiServerName"`
+	ApiServerImage       string        `json:"apiServerImage,omitempty"`
+	ApiServerReplicas    int32         `json:"apiServerReplicas,omitempty"`
+	CreateApiServer      *bool         `json:"createApiServer,omitempty"`
+	CreateMemcached      *bool         `json:"createMemcached,omitempty"`
+	CreateAuthentication *bool         `json:"createAuthentication,omitempty"`
+	PrometheusNamespace  string        `json:"prometheusNamespace,omitempty"`
+	MemcachedReplicas    int32         `json:"memcachedReplicas,omitempty"`
+	MemcachedImage       string        `json:"memcachedImage,omitempty"`
+	SslCertSecret        string        `json:"sslCertSecret"`
+	KedaNamespace        string        `json:"kedaNamespace,omitempty"`
+	MemcacheCredsSecret  string        `json:"memcacheCredsSecret,omitempty"`
+	MemcachedUser        *string       `json:"memcacheUser,omitempty"`
+	MemcacheServers      string        `json:"memcacheServers,omitempty"`
+	CacheWindow          time.Duration `json:"cacheWindow,omitempty"`
+	CacheWindowWhenEmpty time.Duration `json:"cacheWindowWhenEmpty,omitempty"`
+	ResyncInterval       time.Duration `json:"resyncInterval,omitempty"`
+	Namespaces           []string      `json:"namespaces,omitempty"`
+}
+```
+
+Most of the fields are self explanatory except maybe:
+
+- MemcacheCredsSecret, MemcachedUser, MemcacheServers are only used when CreateMemcached is set to false - this would allow you to use an existing instance of Memcached.
+- CacheWindow, CacheWindowWhenEmpty define how often metrics should be retrieved from Github. Because each API request costs credits we want to minimize the number of requests. So if we assume that most projects are not going to be actively developed most of the time then we could set CacheWindowWhenEmpty to 2 minutes. This means that the initial scaling from 0 to 1 replicas might take up to 2 minutes, but we can configure the cooldown period to 12 hours so once a runner is running then at least 1 replica will stay running for the rest of the day.
+- ResyncInterval is how often all of the ScaledActionRunner objects should be retrieved from the cluster (there is also a watch.)
+- Namespaces is a list of namespaces to watch, if it is empty then all namespaces will be watched.
+
+### ScaledActionRunner
+
+```
+type ScaledActionRunnerSpec struct {
+	MaxRunners        int32    `json:"maxRunners"`
+	MinRunners        int32    `json:"minRunners,omitempty"`
+	RunnerSecrets     []string `json:"runnerSecrets"`
+	GithubTokenSecret string   `json:"githubTokenSecret"`
+	Owner             string   `json:"owner"`
+	Repo              string   `json:"repo"`
+	Scaling           *Scaling `json:"scaling,omitempty"`
+	ScaleFactor       *string  `json:"scaleFactor,omitempty"`
+	Selector          *string  `json:"selector,omitempty"`
+	Runner            *Runner  `json:"runner,omitempty"`
+}
+
+type Runner struct {
+	Image                   string                                     `json:"image,omitempty"`
+	Labels                  string                                     `json:"labels,omitempty"`
+	WorkVolumeClaimTemplate *corev1.PersistentVolumeClaimSpec          `json:"workVolumeClaimTemplate,omitempty"`
+	Limits                  *map[corev1.ResourceName]resource.Quantity `json:"limits,omitempty"`
+	Requests                *map[corev1.ResourceName]resource.Quantity `json:"requests,omitempty"`
+}
+
+type Scaling struct {
+	Behavior        *autoscalingv2beta2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
+	PollingInterval *int32                                              `json:"pollingInterval,omitempty"`
+	CooldownPeriod  *int32                                              `json:"cooldownPeriod,omitempty"`
+}
+```
+
+Again most of the fields are self explanatory except maybe:
+TODO:
