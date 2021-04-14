@@ -59,6 +59,8 @@ var _ = Describe("ScaledActionRunner controller", func() {
 				if ss == nil || so == nil {
 					return false
 				}
+				fooBar := make(map[string]string)
+				fooBar["foo"] = "bar"
 				ssVer = ss.ObjectMeta.ResourceVersion
 				soVer = so.ObjectMeta.ResourceVersion
 				Expect(ss.ObjectMeta.Name).To(Equal(testSarName))
@@ -77,6 +79,8 @@ var _ = Describe("ScaledActionRunner controller", func() {
 				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()).To((Equal(testSarRequests + "Mi")))
 				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()).To((Equal(testSarLimits + "m")))
 				Expect(ss.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()).To((Equal(testSarLimits + "Mi")))
+				Expect(ss.Spec.Template.Annotations).To(Equal(fooBar))
+				Expect(ss.Spec.Template.Spec.NodeSelector).To(Equal(fooBar))
 				Expect(ss.Annotations[generators.AnnotationSecretsHash]).NotTo(BeNil())
 				Expect(*so.Spec.MaxReplicaCount).To(BeEquivalentTo(testSarMaxRunners))
 				Expect(*so.Spec.MinReplicaCount).To(BeEquivalentTo(testSarMinRunners))
@@ -154,6 +158,8 @@ func testSarResults(ctx context.Context, test func(*appsv1.StatefulSet, *keda.Sc
 }
 
 func createTestScaledActionRunner(ctx context.Context, k8sClient client.Client) (*runnerv1alpha1.ScaledActionRunner, []corev1.Secret) {
+	fooBar := make(map[string]string)
+	fooBar["foo"] = "bar"
 	var pollingInterval int32 = testSarPollingIntervalSecs
 	var stabalizationWindow int32 = testSarStabalizationWindowSecs
 	var filesystem corev1.PersistentVolumeMode = "Filesystem"
@@ -171,8 +177,10 @@ func createTestScaledActionRunner(ctx context.Context, k8sClient client.Client) 
 			Owner:             testSarOwner,
 			Repo:              testSarRepo,
 			Runner: &runnerv1alpha1.Runner{
-				Image:  testSarImage,
-				Labels: testSarRunnerLabels,
+				Image:        testSarImage,
+				RunnerLabels: testSarRunnerLabels,
+				Annotations:  fooBar,
+				NodeSelector: fooBar,
 				Requests: &map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceCPU:    resource.MustParse(testSarRequests + "m"),
 					corev1.ResourceMemory: resource.MustParse(testSarRequests + "Mi"),
@@ -246,8 +254,8 @@ func updateTestScaledActionRunner(ctx context.Context, k8sClient client.Client, 
 			Owner:             reverse(testSarOwner),
 			Repo:              reverse(testSarRepo),
 			Runner: &runnerv1alpha1.Runner{
-				Image:  reverse(testSarImage),
-				Labels: reverse(testSarRunnerLabels),
+				Image:        reverse(testSarImage),
+				RunnerLabels: reverse(testSarRunnerLabels),
 				Requests: &map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceCPU:    resource.MustParse(reverse(testSarRequests) + "m"),
 					corev1.ResourceMemory: resource.MustParse(reverse(testSarRequests) + "Mi"),

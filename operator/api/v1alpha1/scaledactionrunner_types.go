@@ -51,8 +51,11 @@ type ScaledActionRunnerSpec struct {
 }
 
 type Runner struct {
-	Image                   string                                     `json:"image,omitempty"`
-	Labels                  string                                     `json:"labels,omitempty"`
+	Image        string `json:"image,omitempty"`
+	RunnerLabels string `json:"runnerLabels,omitempty"`
+	//Labels                  map[string]string                          `json:"labels,omitempty"` //TODO: Fix this - it gets confusing cos some labels are required by the statefulset
+	Annotations             map[string]string                          `json:"annotations,omitempty"`
+	NodeSelector            map[string]string                          `json:"nodeSelector,omitempty"`
 	WorkVolumeClaimTemplate *corev1.PersistentVolumeClaimSpec          `json:"workVolumeClaimTemplate,omitempty"`
 	Limits                  *map[corev1.ResourceName]resource.Quantity `json:"limits,omitempty"`
 	Requests                *map[corev1.ResourceName]resource.Quantity `json:"requests,omitempty"`

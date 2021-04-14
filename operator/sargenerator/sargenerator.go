@@ -20,7 +20,6 @@ func getLabels(res metav1.Object) map[string]string {
 	if ls == nil {
 		ls = map[string]string{}
 	}
-	ls["product"] = "github_actions_operator"
 	return ls
 }
 
@@ -193,8 +192,8 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 			Value: "/work",
 		},
 	}
-	if c.Spec.Runner.Labels != "" {
-		toSet["LABELS"] = corev1.EnvVar{Name: "LABELS", Value: c.Spec.Runner.Labels}
+	if c.Spec.Runner.RunnerLabels != "" {
+		toSet["LABELS"] = corev1.EnvVar{Name: "LABELS", Value: c.Spec.Runner.RunnerLabels}
 	}
 	for i, e := range statefulSet.Spec.Template.Spec.Containers[0].Env {
 		if newVal, found := toSet[e.Name]; found {
@@ -207,6 +206,8 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 	}
 	statefulSet.Spec.Template.Spec.Containers[0].Resources.Requests = *c.Spec.Runner.Requests
 	statefulSet.Spec.Template.Spec.Containers[0].Resources.Limits = *c.Spec.Runner.Limits
+	statefulSet.Spec.Template.Annotations = c.Spec.Runner.Annotations
+	statefulSet.Spec.Template.Spec.NodeSelector = c.Spec.Runner.NodeSelector
 	for _, e := range toSet {
 		modified = true
 		statefulSet.Spec.Template.Spec.Containers[0].Env = append(statefulSet.Spec.Template.Spec.Containers[0].Env, e)

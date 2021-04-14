@@ -9,7 +9,7 @@ import (
 )
 
 func TestCreatesScaledObject(t *testing.T) {
-	co := GenerateScaledObject(&v1alpha1.ScaledActionRunner{
+	sar := v1alpha1.ScaledActionRunner{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "Foo",
 			Namespace: "Bar",
@@ -17,6 +17,11 @@ func TestCreatesScaledObject(t *testing.T) {
 		Spec: v1alpha1.ScaledActionRunnerSpec{
 			MaxRunners: 10,
 		},
-	}, "https://foo/bar", "baz")
-	assert.NotNil(t, co)
+	}
+	so := GenerateScaledObject(&sar, "https://foo/bar", "baz")
+	assert.NotNil(t, so)
+	assert.Equal(t, sar.ObjectMeta.Name, so.Name)
+	assert.Equal(t, sar.ObjectMeta.Namespace, so.Namespace)
 }
+
+// This is mostly tested in scaledactionrunner_controller_test

@@ -427,6 +427,17 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 		updatedSs.Spec.Template.Spec.Containers[0].Resources.Limits = *config.Spec.Runner.Limits
 		updated = true
 	}
+
+	if config.Spec.Runner != nil {
+		if !reflect.DeepEqual(oldSs.Spec.Template.Annotations, config.Spec.Runner.Annotations) {
+			updatedSs.Spec.Template.Annotations = config.Spec.Runner.Annotations
+			updated = true
+		}
+		if !reflect.DeepEqual(oldSs.Spec.Template.Spec.NodeSelector, config.Spec.Runner.NodeSelector) {
+			updatedSs.Spec.Template.Spec.NodeSelector = config.Spec.Runner.NodeSelector
+			updated = true
+		}
+	}
 	if updated {
 		return updatedSs
 	}
