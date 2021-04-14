@@ -127,7 +127,8 @@ func (r *ScaledActionRunnerCoreReconciler) CreateUpdateOrReplace(ctx context.Con
 		newKey, foundNew := obj.GetAnnotations()[armgenerator.CrdKey]
 
 		if foundNew && foundOld && oldKey == newKey {
-			logMsg("Ignoring unchanged %s", obj)
+			label := fmt.Sprintf("%s %s/%s", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName())
+			log.V(5).Info(fmt.Sprintf("Ignoring unchanged %s", label))
 			return false, nil
 		}
 		logMsg("Trying to update %s", obj)

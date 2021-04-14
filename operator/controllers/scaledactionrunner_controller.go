@@ -437,6 +437,10 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 			updatedSs.Spec.Template.Spec.NodeSelector = config.Spec.Runner.NodeSelector
 			updated = true
 		}
+		if !reflect.DeepEqual(oldSs.Spec.Template.Spec.Tolerations, config.Spec.Runner.Tolerations) {
+			updatedSs.Spec.Template.Spec.Tolerations = config.Spec.Runner.Tolerations
+			updated = true
+		}
 	}
 	if updated {
 		return updatedSs

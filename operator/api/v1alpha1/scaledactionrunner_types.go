@@ -59,6 +59,7 @@ type Runner struct {
 	WorkVolumeClaimTemplate *corev1.PersistentVolumeClaimSpec          `json:"workVolumeClaimTemplate,omitempty"`
 	Limits                  *map[corev1.ResourceName]resource.Quantity `json:"limits,omitempty"`
 	Requests                *map[corev1.ResourceName]resource.Quantity `json:"requests,omitempty"`
+	Tolerations             []corev1.Toleration                        `json:"tolerations,omitempty"`
 }
 
 type Scaling struct {

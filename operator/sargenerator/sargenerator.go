@@ -208,6 +208,7 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 	statefulSet.Spec.Template.Spec.Containers[0].Resources.Limits = *c.Spec.Runner.Limits
 	statefulSet.Spec.Template.Annotations = c.Spec.Runner.Annotations
 	statefulSet.Spec.Template.Spec.NodeSelector = c.Spec.Runner.NodeSelector
+	statefulSet.Spec.Template.Spec.Tolerations = c.Spec.Runner.Tolerations
 	for _, e := range toSet {
 		modified = true
 		statefulSet.Spec.Template.Spec.Containers[0].Env = append(statefulSet.Spec.Template.Spec.Containers[0].Env, e)
