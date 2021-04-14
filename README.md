@@ -345,7 +345,9 @@ spec:
   selector:                   # Optional. Default: "*"
   runner:                     # Optional
     image:                    # Optional. Default: joeshearn/action-runner-sideloaded-config:latest
-    labels:                   # Optional. Default: []
+    runnerLabels:             # Optional. Default: ""
+    annotations:              # Optional. Default: []
+    nodeSelectors:            # Optional. Default: []
     workVolumeClaimTemplate:  # Optional. Default is a 20Gi volume on default storage.
     limits:                   # Optional. Default: {cpu:2,memory:2000Mi}
     requests:                 # Optional. Default: {cpu:200m,memory:200Mi}
