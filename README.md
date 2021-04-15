@@ -202,7 +202,7 @@ There is a node application which will handle the creation of the secrets and Sc
 owner=
 read_token=/path/to/file/containing/token
 admin_token=/path/to/file/containing/token
-node examples/add-runner.js -n "example-repo" -o "$owner" -r "example-repo" -m 4 -p "$read_token" -a "$admin_token" -f example-repo.yaml
+node examples/add-runner.js -n "example-repo" -o "$owner" -r "example-repo" -m 4 -p "$read_token" -a "$admin_token" -g example-repo -f example-repo.yaml
 ```
 
 This will have created a file called example-repo.yaml which will provision a runner called example-repo that can scale up to 4 replicas and deploy it:
@@ -294,25 +294,26 @@ apiVersion: runner.devjoes.com/v1alpha1
 metadata:
   name: core
 spec:
-  apiServerImage:         # Optional. Default: joeshearn/github-runner-autoscaler-apiserver:latest
+  apiServerImage:             # Optional. Default: joeshearn/github-runner-autoscaler-apiserver:latest
   apiServerName:
   apiServerNamespace:
-  apiServerReplicas:      # Optional. Default: 2
-  createApiServer:        # Optional. Default: true
-  createMemcached:        # Optional. Default: true
-  createAuthentication:   # Optional. Default: true
-  prometheusNamespace:    # Optional. If missing then a ServiceMonitor will not be created
-  memcachedReplicas:      # Optional. Default: 2
-  memcachedImage:         # Optional. Default: docker.io/bitnami/memcached:1.6.9-debian-10-r86
+  apiServerReplicas:          # Optional. Default: 2
+  apiServerExtraArgs:         # Optional. Default: []
+  createApiServer:            # Optional. Default: true
+  createMemcached:            # Optional. Default: true
+  createAuthentication:       # Optional. Default: true
+  prometheusNamespace:        # Optional. If missing then a ServiceMonitor will not be created
+  memcachedReplicas:          # Optional. Default: 2
+  memcachedImage:             # Optional. Default: docker.io/bitnami/memcached:1.6.9-debian-10-r86
   sslCertSecret:
-  kedaNamespace:          # Optional. Default: keda
-  memcacheCredsSecret:    # Optional. Only required if createMemcached==false
-  memcachedUser:          # Optional. Only required if createMemcached==false
-  memcacheServers:        # Optional. Only required if createMemcached==false
-  cacheWindow:            # Optional. Default: 1m
-  cacheWindowWhenEmpty:   # Optional. Default: 2m
-  resyncInterval:         # Optional. Default: 1m
-  namespaces:             # Optional. Default: []
+  kedaNamespace:              # Optional. Default: keda
+  memcacheCredsSecret:        # Optional. Only required if createMemcached==false
+  memcachedUser:              # Optional. Only required if createMemcached==false
+  memcacheServers:            # Optional. Only required if createMemcached==false
+  cacheWindow:                # Optional. Default: 1m
+  cacheWindowWhenEmpty:       # Optional. Default: 2m
+  resyncInterval:             # Optional. Default: 1m
+  namespaces:                 # Optional. Default: []
 ```
 
 Most of the fields are self explanatory except maybe:
@@ -321,6 +322,7 @@ Most of the fields are self explanatory except maybe:
 - cacheWindow, cacheWindowWhenEmpty define how often metrics should be retrieved from Github. Because each API request costs credits we want to minimize the number of requests. So if we assume that most projects are not going to be actively developed most of the time then we could set CacheWindowWhenEmpty to 2 minutes. This means that the initial scaling from 0 to 1 replicas might take up to 2 minutes, but we can configure the cooldown period to 12 hours so once a runner is running then at least 1 replica will stay running for the rest of the day.
 - resyncInterval is how often all of the ScaledActionRunner objects should be retrieved from the cluster (there is also a watch.)
 - namespaces is a list of namespaces to watch, if it is empty then all namespaces will be watched.
+- apiServerPatTokenNamespace is the namespace to find githubTokenSecret secrets in. If empty then they will be found in the same namespace as the ScaledActionRunner.
 
 ### ScaledActionRunner
 

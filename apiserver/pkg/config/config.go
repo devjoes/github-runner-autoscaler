@@ -19,10 +19,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const (
-	weirdJsonMsgPrefix = "\xef\xbb\xbf"
-)
-
 type Config struct {
 	CacheWindow          time.Duration `json:"cacheWindow"`
 	CacheWindowWhenEmpty time.Duration `json:"cacheWindowWhenEmpty"`
@@ -30,6 +26,7 @@ type Config struct {
 	MemcachedServers     string        `json:"memcachedServers"`
 	MemcachedUser        string        `json:"memcachedUser"`
 	MemcachedPass        string        `json:"memcachedPass"`
+	GithubPatNamespace   string        `json:"githubPatNamespace"`
 
 	AllNs           bool     `json:"allNs"`
 	InClusterConfig bool     `json:"inClusterConfig"`
@@ -42,9 +39,10 @@ type Config struct {
 	flagCacheWindow          *string
 	flagCacheWindowWhenEmpty *string
 	flagResyncIntervalStr    *string
+	flagKubeconfig           *string
+	flagGithubPatNamespace   *string
 	flagRunnerNSs            *ArrayFlags
 	flagAllNs                *bool
-	flagKubeconfig           *string
 	flagInClusterConfig      *bool
 
 	store cache.Store
@@ -120,6 +118,7 @@ func (c *Config) AddFlags() {
 	c.flagMemcachedServers = flag.String("memcached-servers", "", "Memcached servers to use. If unspecified a local in memory cache is used.")
 	c.flagMemcachedUser = flag.String("memcached-user", "", "Memcached user to use.")
 	c.flagMemcachedPass = flag.String("memcached-password", "", "Memcached password to use.")
+	c.flagGithubPatNamespace = flag.String("github-pat-namespace", "", "Namespace to find GithubTokenSecret, if unspecified then the namespace of the runner is used instead.")
 }
 
 func validateArgs(runnerNSs []string, allNs bool) error {
@@ -159,6 +158,10 @@ func (c *Config) SetupConfig(params ...interface{}) error {
 	c.AllNs = *c.flagAllNs
 	c.InClusterConfig = *c.flagInClusterConfig
 	c.Kubeconfig = *c.flagKubeconfig
+	c.GithubPatNamespace = ""
+	if c.flagGithubPatNamespace != nil {
+		c.GithubPatNamespace = *c.flagGithubPatNamespace
+	}
 	c.RunnerNSs = *c.flagRunnerNSs
 
 	if err := validateArgs(c.RunnerNSs, c.AllNs); err != nil {

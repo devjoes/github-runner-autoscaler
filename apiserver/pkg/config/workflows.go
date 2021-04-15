@@ -96,7 +96,7 @@ func (c *Config) copyAllWorkflows(ctx context.Context, k8sClient kubernetes.Inte
 	purgeOld := true
 	var toCache []interface{}
 	for _, r := range runners {
-		wf, err := workflowFromScaledActionRunner(ctx, k8sClient, r)
+		wf, err := workflowFromScaledActionRunner(ctx, k8sClient, r, c.GithubPatNamespace)
 		if err != nil {
 			klog.Errorf("Failed to copy workflow from runner %s/%s: %s", r.ObjectMeta.Namespace, r.ObjectMeta.Name, err.Error())
 			purgeOld = false
@@ -163,7 +163,7 @@ func (c *Config) setupWatcher(k8sClient kubernetes.Interface, runnerClient runne
 			obj := event.Object
 			runner = obj.(*runnerv1alpha1.ScaledActionRunner)
 
-			wf, err := workflowFromScaledActionRunner(context.TODO(), k8sClient, *runner)
+			wf, err := workflowFromScaledActionRunner(context.TODO(), k8sClient, *runner, c.GithubPatNamespace)
 			if err != nil {
 				klog.Errorf("Error %s from watch. %s %s", event.Type, event.Object, err.Error())
 				continue
@@ -192,13 +192,17 @@ func (c *Config) setupWatcher(k8sClient kubernetes.Interface, runnerClient runne
 	}
 }
 
-func workflowFromScaledActionRunner(ctx context.Context, client kubernetes.Interface, crd runnerv1alpha1.ScaledActionRunner) (*GithubWorkflowConfig, error) {
+func workflowFromScaledActionRunner(ctx context.Context, client kubernetes.Interface, crd runnerv1alpha1.ScaledActionRunner, githubPatNamespace string) (*GithubWorkflowConfig, error) {
 	if crd.Spec.ScaleFactor == nil {
-		one := "1"
-		crd.Spec.ScaleFactor = &one
+		point8 := "0.8"
+		crd.Spec.ScaleFactor = &point8
+	}
+	githubPatNs := githubPatNamespace
+	if githubPatNs == "" {
+		githubPatNs = crd.Namespace
 	}
 
-	token, err := getToken(ctx, client, crd)
+	token, err := getToken(ctx, client, crd.Spec.GithubTokenSecret, githubPatNs)
 	if err != nil {
 		return nil, err
 	}
@@ -212,11 +216,10 @@ func workflowFromScaledActionRunner(ctx context.Context, client kubernetes.Inter
 	}, nil
 }
 
-func getToken(ctx context.Context, client kubernetes.Interface, crd runnerv1alpha1.ScaledActionRunner) (string, error) {
-	ns := crd.ObjectMeta.Namespace
-	secret, err := client.CoreV1().Secrets(ns).Get(ctx, crd.Spec.GithubTokenSecret, metav1.GetOptions{})
+func getToken(ctx context.Context, client kubernetes.Interface, githubPatName string, githubPatNamespace string) (string, error) {
+	secret, err := client.CoreV1().Secrets(githubPatNamespace).Get(ctx, githubPatName, metav1.GetOptions{})
 	if err != nil {
-		return "", fmt.Errorf("error reading secret %s in namespace %s. %s", crd.Spec.GithubTokenSecret, ns, err.Error())
+		return "", fmt.Errorf("error reading secret %s in namespace %s. %s", githubPatName, githubPatNamespace, err.Error())
 	}
 	var fields []string
 	for k, _ := range secret.Data {
@@ -225,7 +228,7 @@ func getToken(ctx context.Context, client kubernetes.Interface, crd runnerv1alph
 		}
 	}
 	if len(fields) == 0 {
-		return "", fmt.Errorf("no fields begining with 'token' found in secret %s in namespace %s.", crd.Spec.GithubTokenSecret, ns)
+		return "", fmt.Errorf("no fields begining with 'token' found in secret %s in namespace %s.", githubPatName, githubPatNamespace)
 	}
 	index := rand.Intn(len(fields))
 	return string(secret.Data[fields[index]]), nil

@@ -35,6 +35,7 @@ type ScaledActionRunnerCoreSpec struct {
 	ApiServerName        string        `json:"apiServerName"`
 	ApiServerImage       string        `json:"apiServerImage,omitempty"`
 	ApiServerReplicas    int32         `json:"apiServerReplicas,omitempty"`
+	ApiServerExtraArgs   []string      `json:"apiServerExtraArgs,omitempty"`
 	CreateApiServer      *bool         `json:"createApiServer,omitempty"`
 	CreateMemcached      *bool         `json:"createMemcached,omitempty"`
 	CreateAuthentication *bool         `json:"createAuthentication,omitempty"`

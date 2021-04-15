@@ -30,6 +30,10 @@ spec:
           spec:
             description: ScaledActionRunnerCoreSpec defines the desired state of ScaledActionRunnerCore
             properties:
+              apiServerExtraArgs:
+                items:
+                  type: string
+                type: array
               apiServerImage:
                 type: string
               apiServerName:
@@ -438,6 +442,10 @@ spec:
           spec:
             description: ScaledActionRunnerCoreSpec defines the desired state of ScaledActionRunnerCore
             properties:
+              apiServerExtraArgs:
+                items:
+                  type: string
+                type: array
               apiServerImage:
                 type: string
               apiServerName:
