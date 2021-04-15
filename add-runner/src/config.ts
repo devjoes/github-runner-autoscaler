@@ -9,8 +9,9 @@ export type Config = {
 	owner: string;
 	repo: string;
 	labels?: string;
-	help: boolean;
+	githubNs: string;
 	output: string;
+	help: boolean;
 };
 
 export function GetConfig(): Config {
@@ -42,13 +43,14 @@ export function GetConfig(): Config {
 			maxRunners: { type: Number, alias: "m", description: "Maximum number of runners" },
 			owner: { type: String, alias: "o", description: "Repo owner" },
 			repo: { type: String, alias: "r", description: "Repo name" },
+			labels: { type: String, optional: true, alias: "l", description: "Labels to add to runner" },
+			githubNs: { type: String, alias: "g", description: "Github API server namespace" },
 			help: {
 				type: Boolean,
 				defaultValue: false,
 				alias: "h",
 				description: "Prints this usage guide",
 			},
-			labels: { type: String, optional: true, alias: "l", description: "Labels to add to runner" },
 		},
 		{
 			helpArg: "help",
@@ -64,9 +66,9 @@ export function GetConfig(): Config {
 	);
 	const parsePat = (t: string) => {
 		const rx = /^[a-z0-9_]{40}$/i;
-		let token = t;
+		let token = t.trim();
 		if (!token.match(rx) && fs.existsSync(token)) {
-			token = fs.readFileSync(token).toString();
+			token = fs.readFileSync(token).toString().trim();
 		}
 		if (token.match(rx)) {
 			return token;

@@ -54,6 +54,7 @@ function generateScaledActionRunner(config: Config): ScaledActionRunner {
 export default function (config: Config, creds: Array<RunnerCreds>): Array<string> {
 	const sar = generateScaledActionRunner(config);
 	const readPat = generateSecret(config.name, { token: btoa(config.readPat) });
+	readPat.metadata.namespace = config.githubNs;
 	const runnerSecrets = creds.map((c, i) => generateRunnerSecret(`${config.name}-${i}`, c));
 	return [
 		YAML.stringify(sar),
@@ -83,7 +84,7 @@ type ScaledActionRunnerSpec = {
 type Secret = {
 	apiVersion: string;
 	kind: string;
-	metadata: { name: string };
+	metadata: { name: string; namespace?: string };
 	data: { [key: string]: string };
 	type: string;
 };
