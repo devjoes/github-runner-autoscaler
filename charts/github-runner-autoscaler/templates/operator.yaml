@@ -64,7 +64,7 @@ spec:
           command:
             - /manager
           image: {{ .Values.image }}
-		  imagePullPolicy: {{ .Values.imagePullPolicy }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           livenessProbe:
             httpGet:
               path: /healthz
