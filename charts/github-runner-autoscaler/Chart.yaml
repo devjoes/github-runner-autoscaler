@@ -5,5 +5,5 @@ home: https://github.com/devjoes/github-runner-autoscaler
 sources:
   - https://github.com/devjoes/github-runner-autoscaler
 type: application
-version: 0.0.3
+version: 0.0.4
 appVersion: v0.0.1
