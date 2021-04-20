@@ -9,7 +9,8 @@ export type Config = {
 	owner: string;
 	repo: string;
 	labels?: string;
-	githubNs: string;
+	githubPatNs?: string;
+	statefulSetNs: string;
 	output: string;
 	help: boolean;
 };
@@ -44,7 +45,13 @@ export function GetConfig(): Config {
 			owner: { type: String, alias: "o", description: "Repo owner" },
 			repo: { type: String, alias: "r", description: "Repo name" },
 			labels: { type: String, optional: true, alias: "l", description: "Labels to add to runner" },
-			githubNs: { type: String, alias: "g", description: "Github API server namespace" },
+			githubPatNs: {
+				type: String,
+				optional: true,
+				alias: "g",
+				description: "Namespace to create the github PAT in",
+			},
+			statefulSetNs: { type: String, alias: "s", description: "StatefulSet namespace" },
 			help: {
 				type: Boolean,
 				defaultValue: false,
@@ -77,5 +84,8 @@ export function GetConfig(): Config {
 	};
 	config.adminPat = parsePat(config.adminPat);
 	config.readPat = parsePat(config.readPat);
+	if (!config.githubPatNs || config.githubPatNs == "") {
+		config.githubPatNs = config.statefulSetNs;
+	}
 	return config;
 }

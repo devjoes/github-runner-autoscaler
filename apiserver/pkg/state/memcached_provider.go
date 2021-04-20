@@ -31,7 +31,11 @@ func NewMemcachedStateProvider(servers string, username string, argPassword stri
 	// so it is a good test to make the key dynamic
 	_, err := cache.Set(key, "ok", 0, 1, 0)
 	if err != nil {
-		return nil, fmt.Errorf("Could not connect to cache with '%s' '%s' '%s': %s", servers, username, password, err.Error())
+		pass := password
+		if len(pass) > 3 {
+			pass = fmt.Sprintf("%s******", password[:3])
+		}
+		return nil, fmt.Errorf("Could not connect to cache with '%s' '%s' '%s': %s", servers, username, pass, err.Error())
 	}
 	return &MemcachedStateProvider{cache: cache}, nil
 }

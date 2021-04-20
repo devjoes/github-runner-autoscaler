@@ -495,7 +495,7 @@ const JsonMemcached = `{
 			{
 			  "name": "memcached",
 			  "image": "docker.io/bitnami/memcached:latest",
-			  "imagePullPolicy": "IfNotPresent",
+			  "imagePullPolicy": "Always",
 			  "args": [
 				"/run.sh"
 			  ],
@@ -600,7 +600,7 @@ const JsonApiServer = `{
 							"--tls-private-key-file=/apiserver.local.config/certificates/tls.key"
 						],
 						"image": "joeshearn/github-runner-autoscaler-apiserver:000021",
-						"imagePullPolicy": "IfNotPresent",
+						"imagePullPolicy": "Always",
 						"name": "github-action-apiserver",
 						"ports": [
 							{

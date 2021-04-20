@@ -48,13 +48,20 @@ function GetConfig() {
         maxRunners: { type: Number, alias: "m", description: "Maximum number of runners" },
         owner: { type: String, alias: "o", description: "Repo owner" },
         repo: { type: String, alias: "r", description: "Repo name" },
+        labels: { type: String, optional: true, alias: "l", description: "Labels to add to runner" },
+        githubPatNs: {
+            type: String,
+            optional: true,
+            alias: "g",
+            description: "Namespace to create the github PAT in",
+        },
+        statefulSetNs: { type: String, alias: "s", description: "StatefulSet namespace" },
         help: {
             type: Boolean,
             defaultValue: false,
             alias: "h",
             description: "Prints this usage guide",
         },
-        labels: { type: String, optional: true, alias: "l", description: "Labels to add to runner" },
     }, {
         helpArg: "help",
         headerContentSections: [
@@ -67,9 +74,9 @@ function GetConfig() {
     });
     const parsePat = (t) => {
         const rx = /^[a-z0-9_]{40}$/i;
-        let token = t;
+        let token = t.trim();
         if (!token.match(rx) && fs_1.default.existsSync(token)) {
-            token = fs_1.default.readFileSync(token).toString();
+            token = fs_1.default.readFileSync(token).toString().trim();
         }
         if (token.match(rx)) {
             return token;
@@ -78,9 +85,51 @@ function GetConfig() {
     };
     config.adminPat = parsePat(config.adminPat);
     config.readPat = parsePat(config.readPat);
+    if (!config.githubPatNs || config.githubPatNs == "") {
+        config.githubPatNs = config.statefulSetNs;
+    }
     return config;
 }
 exports.GetConfig = GetConfig;
+
+
+/***/ }),
+
+/***/ 3738:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const runner_1 = __importDefault(__webpack_require__(8904));
+const githubRegistration_1 = __webpack_require__(2846);
+const resources_1 = __importDefault(__webpack_require__(5187));
+function default_1(config) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const token = yield githubRegistration_1.getRegToken(config.adminPat, config.owner, config.repo);
+        const runners = new runner_1.default(token);
+        yield runners.setup();
+        const creds = [];
+        for (let i = 0; i < config.maxRunners; i++) {
+            const c = yield runners.addRunner(config.owner, config.repo, `${config.name}-${i}`, config.labels);
+            creds.push(c);
+        }
+        return resources_1.default(config, creds);
+    });
+}
+exports.default = default_1;
 
 
 /***/ }),
@@ -137,27 +186,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.main = void 0;
 const fs_1 = __importDefault(__webpack_require__(5747));
-const runner_1 = __importDefault(__webpack_require__(8904));
-const githubRegistration_1 = __webpack_require__(2846);
-const resources_1 = __importDefault(__webpack_require__(5187));
 const config_1 = __webpack_require__(7140);
+const getResources_1 = __importDefault(__webpack_require__(3738));
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const config = config_1.GetConfig();
-        const token = yield githubRegistration_1.getRegToken(config.adminPat, config.owner, config.repo);
-        const runners = new runner_1.default(token);
-        yield runners.setup();
-        const creds = [];
-        for (let i = 0; i < config.maxRunners; i++) {
-            const c = yield runners.addRunner(config.owner, config.repo, `${config.name}-${i}`, config.labels);
-            creds.push(c);
-        }
+        const resources = yield getResources_1.default(config);
         let out = process.stdout;
         if (config.output != "") {
             out = fs_1.default.createWriteStream(config.output);
             out.on("error", console.error);
         }
-        const resources = resources_1.default(config, creds);
         for (let i = 0; i < resources.length; i++) {
             const yml = resources[i];
             out.write(yml);
@@ -184,19 +223,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const yaml_1 = __importDefault(__webpack_require__(7178));
 const btoa = (input) => Buffer.from(input).toString("base64");
-function generateSecret(name, data) {
+function generateSecret(name, namespace, data) {
     return {
         apiVersion: "v1",
         kind: "Secret",
         metadata: {
             name,
+            namespace,
         },
         data,
         type: "Opaque",
     };
 }
-function generateRunnerSecret(name, creds) {
-    return generateSecret(name, {
+function generateRunnerSecret(name, namespace, creds) {
+    return generateSecret(name, namespace, {
         ".credentials_rsaparams": btoa(creds.credentialsRsaparams),
         ".credentials": btoa(creds.credentials),
         ".runner": btoa(creds.runner),
@@ -233,8 +273,9 @@ function generateScaledActionRunner(config) {
 }
 function default_1(config, creds) {
     const sar = generateScaledActionRunner(config);
-    const readPat = generateSecret(config.name, { token: btoa(config.readPat) });
-    const runnerSecrets = creds.map((c, i) => generateRunnerSecret(`${config.name}-${i}`, c));
+    const githubPatNs = config.githubPatNs ? config.githubPatNs : config.statefulSetNs;
+    const readPat = generateSecret(config.name, githubPatNs, { token: btoa(config.readPat) });
+    const runnerSecrets = creds.map((c, i) => generateRunnerSecret(`${config.name}-${i}`, config.statefulSetNs, c));
     return [
         yaml_1.default.stringify(sar),
         yaml_1.default.stringify(readPat),
@@ -8145,7 +8186,7 @@ module.exports = Section
 
 const Section = __webpack_require__(1501)
 const t = __webpack_require__(3951)
-const Table = __webpack_require__(6274)
+const Table = __webpack_require__(3813)
 const chalkFormat = __webpack_require__(8445)
 
 class ContentSection extends Section {
@@ -8305,7 +8346,7 @@ module.exports = ContentSection
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const Section = __webpack_require__(1501)
-const Table = __webpack_require__(6274)
+const Table = __webpack_require__(3813)
 const chalk = __webpack_require__(8445)
 const t = __webpack_require__(3951)
 const arrayify = __webpack_require__(6523)
@@ -21760,7 +21801,7 @@ var BufferList = __webpack_require__(2726);
 
 var destroyImpl = __webpack_require__(64);
 
-var _require = __webpack_require__(3813),
+var _require = __webpack_require__(8852),
     getHighWaterMark = _require.getHighWaterMark;
 
 var _require$codes = __webpack_require__(583)/* .codes */ .q,
@@ -23107,7 +23148,7 @@ function _isUint8Array(obj) {
 
 var destroyImpl = __webpack_require__(64);
 
-var _require = __webpack_require__(3813),
+var _require = __webpack_require__(8852),
     getHighWaterMark = _require.getHighWaterMark;
 
 var _require$codes = __webpack_require__(583)/* .codes */ .q,
@@ -24553,7 +24594,7 @@ module.exports = pipeline;
 
 /***/ }),
 
-/***/ 3813:
+/***/ 8852:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
@@ -41980,7 +42021,7 @@ module.exports = {
 
 /***/ }),
 
-/***/ 6274:
+/***/ 3813:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const os = __webpack_require__(2087)
