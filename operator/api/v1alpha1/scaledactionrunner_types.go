@@ -76,14 +76,16 @@ const (
 func Validate(ctx context.Context, sr *ScaledActionRunner, c client.Client) error {
 	s := corev1.Secret{}
 	checkSecret := func(ctx context.Context, c client.Client, name string, namespace string) error {
-		if err := c.Get(ctx, types.NamespacedName{Namespace: sr.ObjectMeta.Namespace, Name: sr.Spec.GithubTokenSecret}, &s); err != nil {
+		if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sr.Spec.GithubTokenSecret}, &s); err != nil {
 			return fmt.Errorf("Could not find secret %s in namespace %s. %s", name, namespace, err.Error())
 		}
 		return nil
 	}
-	if err := checkSecret(ctx, c, sr.ObjectMeta.Namespace, sr.Spec.GithubTokenSecret); err != nil {
-		return err
-	}
+	//TODO: Check against apiServerExtraArgs:[ --github-pat-namespace=bosun-gha]
+	// gtsNs := sr.ObjectMeta.Namespace
+	// if err := checkSecret(ctx, c, sr.ObjectMeta.Namespace, sr.Spec.GithubTokenSecret); err != nil {
+	// 	return err
+	// }
 
 	for i := int32(0); i < sr.Spec.MaxRunners; i++ {
 		name := fmt.Sprintf("%s-%d", sr.ObjectMeta.Name, i)
@@ -137,7 +139,7 @@ func Setup(sr *ScaledActionRunner, crNamespace string) {
 		}
 	}
 	if spec.ScaleFactor == nil {
-		sf := "0.5"
+		sf := "0.8"
 		spec.ScaleFactor = &sf
 	}
 
