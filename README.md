@@ -138,7 +138,10 @@ This will create a self signed CA certificate in the cert-manager namespace and 
 We can then install the operator (this will track the latest tag):
 
 ```
-kubectl apply -f install.yaml
+helm repo add github-runner-autoscaler https://github.com/devjoes/github-runner-autoscaler/charts
+helm repo update
+
+helm install github-operator github-runner-autoscaler/github-runner-autoscaler -n github-operator --create-namespace
 ```
 
 Now we can create the ScaledActionRunnerCore CR. Because this CR has to create a cluster wide APIService called "v1beta1.custom.metrics.k8s.io" there can only be one ScaledActionRunnerCore object in the cluster. To ensure this is the case ScaledActionRunnerCore is a cluster wide object and has to be named 'core', if it isn't named core then it will be ignored.
