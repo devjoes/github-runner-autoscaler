@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/utils"
-	"github.com/devjoes/mc/v3" //TODO: Revert to memcachier/mc once https://github.com/memcachier/mc/issues/16 is fixed
+	"github.com/memcachier/mc"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 

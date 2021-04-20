@@ -401,3 +401,13 @@ The following prometheus metrics are exposed:
 | workflow_queue_length_filtered        | The number of queued jobs filtered by labels | name, selector, wf_id, wf_name, wf_runs_on |
 | workflow_queue_length_filtered_scaled | The number of queued jobs filtered by labels | name, selector, wf_id, wf_name, wf_runs_on |
 | github_credits                        | Remaining rate limit creds by token          | token_id, token_name                       |
+
+## Components
+
+| Path                       | Description                                                    |
+| -------------------------- | -------------------------------------------------------------- |
+| ./apiserver                | API Server that returns metrics                                |
+| ./operator                 | Operator that sets everything up                               |
+| ./runner                   | Runner docker image that allows configuration to be passed in  |
+| ./add-runner               | Node script that registers runners (requires docker in docker) |
+| ./GithubRunnerRegistration | Service that registers runners                                 |
