@@ -3,19 +3,20 @@ import { Config } from "./config";
 import { RunnerCreds } from "./runner";
 
 const btoa = (input: string): string => Buffer.from(input).toString("base64");
-function generateSecret(name: string, data: { [key: string]: string }): Secret {
+function generateSecret(name: string, namespace: string, data: { [key: string]: string }): Secret {
 	return {
 		apiVersion: "v1",
 		kind: "Secret",
 		metadata: {
 			name,
+			namespace,
 		},
 		data,
 		type: "Opaque",
 	};
 }
-function generateRunnerSecret(name: string, creds: RunnerCreds): Secret {
-	return generateSecret(name, {
+function generateRunnerSecret(name: string, namespace: string, creds: RunnerCreds): Secret {
+	return generateSecret(name, namespace, {
 		".credentials_rsaparams": btoa(creds.credentialsRsaparams),
 		".credentials": btoa(creds.credentials),
 		".runner": btoa(creds.runner),
@@ -53,9 +54,11 @@ function generateScaledActionRunner(config: Config): ScaledActionRunner {
 
 export default function (config: Config, creds: Array<RunnerCreds>): Array<string> {
 	const sar = generateScaledActionRunner(config);
-	const readPat = generateSecret(config.name, { token: btoa(config.readPat) });
-	readPat.metadata.namespace = config.githubNs;
-	const runnerSecrets = creds.map((c, i) => generateRunnerSecret(`${config.name}-${i}`, c));
+	const githubPatNs = config.githubPatNs ? config.githubPatNs : config.statefulSetNs;
+	const readPat = generateSecret(config.name, githubPatNs, { token: btoa(config.readPat) });
+	const runnerSecrets = creds.map((c, i) =>
+		generateRunnerSecret(`${config.name}-${i}`, config.statefulSetNs, c)
+	);
 	return [
 		YAML.stringify(sar),
 		YAML.stringify(readPat),

@@ -1,6 +1,6 @@
 import fs from "fs";
 
-import { Config, GetConfig } from "./config";
+import { GetConfig } from "./config";
 import GetResources from "./getResources";
 
 export async function main(): Promise<void> {
