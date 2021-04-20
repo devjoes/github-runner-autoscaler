@@ -138,7 +138,7 @@ This will create a self signed CA certificate in the cert-manager namespace and 
 We can then install the operator (this will track the latest tag):
 
 ```
-helm repo add github-runner-autoscaler https://github.com/devjoes/github-runner-autoscaler/charts
+helm repo add github-runner-autoscaler https://devjoes.github.io/github-runner-autoscaler/charts/
 helm repo update
 
 helm install github-operator github-runner-autoscaler/github-runner-autoscaler -n github-operator --create-namespace
