@@ -250,6 +250,7 @@ function generateScaledActionRunner(config) {
         apiVersion: "runner.devjoes.com/v1alpha1",
         metadata: {
             name: config.name,
+            namespace: config.statefulSetNs,
         },
         spec: {
             githubTokenSecret: config.name,
