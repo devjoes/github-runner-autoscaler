@@ -15,7 +15,7 @@ spec:
   secretName: ca-cert
   duration: 2880h # 120d
   renewBefore: 360h # 15d
-  commonName: github-action-autoscaler-server-ca
+  commonName: github-runner-autoscaler-server-ca
   isCA: true
   keySize: 2048
   usages:
@@ -37,7 +37,7 @@ spec:
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
-  name: github-action-autoscaler-server
+  name: github-runner-autoscaler-server
   namespace: github
 spec:
   secretName: tls-cert
@@ -64,7 +64,7 @@ spec:
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
-  name: github-action-autoscaler-client
+  name: github-runner-autoscaler-client
   namespace: keda
 spec:
   secretName: cert

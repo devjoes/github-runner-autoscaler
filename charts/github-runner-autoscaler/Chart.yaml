@@ -1,0 +1,9 @@
+apiVersion: v2
+name: github-runner-autoscaler
+description: Operator for github-runner-autoscaler
+home: https://github.com/devjoes/github-runner-autoscaler
+sources:
+  - https://github.com/devjoes/github-runner-autoscaler
+type: application
+version: 0.0.1
+appVersion: v0.0.1
