@@ -81,7 +81,7 @@ func Validate(ctx context.Context, sr *ScaledActionRunner, c client.Client) erro
 		}
 		return nil
 	}
-	//TODO: Check against apiServerExtraArgs:[ --github-pat-namespace=bosun-gha]
+	//TODO: Check against apiServerExtraArgs:[ --github-pat-namespace=foo]
 	// gtsNs := sr.ObjectMeta.Namespace
 	// if err := checkSecret(ctx, c, sr.ObjectMeta.Namespace, sr.Spec.GithubTokenSecret); err != nil {
 	// 	return err
