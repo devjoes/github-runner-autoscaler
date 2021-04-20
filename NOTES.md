@@ -1,4 +1,4 @@
-# github-action-autoscaler
+# github-runner-autoscaler
 
 # notes
 
