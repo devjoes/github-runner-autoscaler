@@ -1,4 +1,4 @@
-package armgenerator
+package coregenerator
 
 import (
 	"crypto/sha1"

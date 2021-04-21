@@ -17,41 +17,41 @@ import (
 )
 
 const (
-	testName                        = "testname"
-	testArmImage                    = "foo"
-	testArmReplicas                 = 3
-	testArmCacheWindowSecs          = 123
-	testArmCacheWindowWhenEmptySecs = 234
-	testArmResyncIntervalSecs       = 345
-	testArmUseExistingSslCertSecret = ""
-	testNamespaces                  = ""
+	testName                         = "testname"
+	testCoreImage                    = "foo"
+	testCoreReplicas                 = 3
+	testCoreCacheWindowSecs          = 123
+	testCoreCacheWindowWhenEmptySecs = 234
+	testCoreResyncIntervalSecs       = 345
+	testCoreUseExistingSslCertSecret = ""
+	testNamespaces                   = ""
 )
 
 var _ = Describe("ScaledActionRunnerCore controller", func() {
 	Context("ScaledActionRunnerCore CRD", func() {
 		ctx := context.Background()
-		var arm *runnerv1alpha1.ScaledActionRunnerCore
+		var core *runnerv1alpha1.ScaledActionRunnerCore
 		var version string
 		ns := "testns"
 		testCreation := func(createApiServer, createMemcached, createTriggerAuth bool, testNamespace string, msg string) {
 			It("Should set up dependant resources when created"+msg, func() {
 				Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testNamespace}})).Should(Succeed())
-				arm = getRunner(createApiServer, createMemcached, createTriggerAuth, testNamespace)
+				core = getRunner(createApiServer, createMemcached, createTriggerAuth, testNamespace)
 				k8sClient.DeleteAllOf(ctx, &runnerv1alpha1.ScaledActionRunnerCore{})
 				k8sClient.DeleteAllOf(ctx, &keda.ClusterTriggerAuthentication{})
-				Expect(k8sClient.Create(ctx, arm)).Should(Succeed())
-				testArmResults(ctx, []bool{createApiServer, createMemcached, createTriggerAuth}, testNamespace, func(dep *appsv1.Deployment, mc *appsv1.StatefulSet, auth *keda.ClusterTriggerAuthentication) bool {
+				Expect(k8sClient.Create(ctx, core)).Should(Succeed())
+				testCoreResults(ctx, []bool{createApiServer, createMemcached, createTriggerAuth}, testNamespace, func(dep *appsv1.Deployment, mc *appsv1.StatefulSet, auth *keda.ClusterTriggerAuthentication) bool {
 					version = dep.ResourceVersion
 					if createApiServer {
-						Expect(dep.Name).To(Equal(arm.Spec.ApiServerName))
-						Expect(dep.Namespace).To(Equal(arm.Spec.ApiServerNamespace))
+						Expect(dep.Name).To(Equal(core.Spec.ApiServerName))
+						Expect(dep.Namespace).To(Equal(core.Spec.ApiServerNamespace))
 					}
 					if createMemcached {
-						Expect(mc.Name).To(Equal(arm.Spec.ApiServerName + "-cache"))
-						Expect(mc.Namespace).To(Equal(arm.Spec.ApiServerNamespace))
+						Expect(mc.Name).To(Equal(core.Spec.ApiServerName + "-cache"))
+						Expect(mc.Namespace).To(Equal(core.Spec.ApiServerNamespace))
 					}
 					if createTriggerAuth {
-						Expect(auth.Name).To(Equal(arm.Spec.ApiServerName))
+						Expect(auth.Name).To(Equal(core.Spec.ApiServerName))
 						Expect(auth.Namespace).To(Equal(""))
 					}
 					return true
@@ -60,16 +60,16 @@ var _ = Describe("ScaledActionRunnerCore controller", func() {
 		}
 		testCreation(true, true, true, ns, "")
 		It("Should delete and recreate dependant resources when updated", func() {
-			Expect(k8sClient.Update(ctx, arm)).Should(Succeed())
+			Expect(k8sClient.Update(ctx, core)).Should(Succeed())
 			secs := 0
-			testArmResults(ctx, []bool{true, true, true}, ns, func(dep *appsv1.Deployment, mc *appsv1.StatefulSet, auth *keda.ClusterTriggerAuthentication) bool {
+			testCoreResults(ctx, []bool{true, true, true}, ns, func(dep *appsv1.Deployment, mc *appsv1.StatefulSet, auth *keda.ClusterTriggerAuthentication) bool {
 				Expect(dep.ResourceVersion).To(Equal(version))
 				secs++
 				return secs >= 5
 			})
-			arm.Spec.ApiServerImage = fmt.Sprintf("different_%s", arm.Spec.ApiServerImage)
-			Expect(k8sClient.Update(ctx, arm)).Should(Succeed())
-			testArmResults(ctx, []bool{true, true, true}, ns, func(dep *appsv1.Deployment, mc *appsv1.StatefulSet, auth *keda.ClusterTriggerAuthentication) bool {
+			core.Spec.ApiServerImage = fmt.Sprintf("different_%s", core.Spec.ApiServerImage)
+			Expect(k8sClient.Update(ctx, core)).Should(Succeed())
+			testCoreResults(ctx, []bool{true, true, true}, ns, func(dep *appsv1.Deployment, mc *appsv1.StatefulSet, auth *keda.ClusterTriggerAuthentication) bool {
 				return dep.ResourceVersion != version
 			})
 		})
@@ -93,12 +93,12 @@ func getRunner(createApiServer bool, createMemcached bool, createAuthentication 
 		Spec: runnerv1alpha1.ScaledActionRunnerCoreSpec{
 			ApiServerNamespace:   testNamespace,
 			ApiServerName:        testName,
-			ApiServerImage:       testArmImage,
-			ApiServerReplicas:    testArmReplicas,
-			CacheWindow:          testArmCacheWindowSecs,
-			CacheWindowWhenEmpty: testArmCacheWindowWhenEmptySecs,
-			ResyncInterval:       testArmResyncIntervalSecs,
-			SslCertSecret:        testArmUseExistingSslCertSecret,
+			ApiServerImage:       testCoreImage,
+			ApiServerReplicas:    testCoreReplicas,
+			CacheWindow:          testCoreCacheWindowSecs,
+			CacheWindowWhenEmpty: testCoreCacheWindowWhenEmptySecs,
+			ResyncInterval:       testCoreResyncIntervalSecs,
+			SslCertSecret:        testCoreUseExistingSslCertSecret,
 			Namespaces:           ns,
 			CreateApiServer:      &createApiServer,
 			CreateMemcached:      &createMemcached,
@@ -107,7 +107,7 @@ func getRunner(createApiServer bool, createMemcached bool, createAuthentication 
 	}
 }
 
-func testArmResults(ctx context.Context, expectedCreate []bool, testNamespace string, test func(*appsv1.Deployment, *appsv1.StatefulSet, *keda.ClusterTriggerAuthentication) bool) {
+func testCoreResults(ctx context.Context, expectedCreate []bool, testNamespace string, test func(*appsv1.Deployment, *appsv1.StatefulSet, *keda.ClusterTriggerAuthentication) bool) {
 	Eventually(func() bool {
 		dep := appsv1.Deployment{}
 		memCached := appsv1.StatefulSet{}

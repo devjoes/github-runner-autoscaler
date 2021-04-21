@@ -54,7 +54,6 @@ type ScaledActionRunnerReconciler struct {
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=get;watch;list;
 // +kubebuilder:rbac:groups=keda.sh,resources=clustertriggerauthentications;scaledobjects,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
-//TODO: Review this ^ (seems a bit powerful)
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -104,8 +103,8 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	metricsEndpoint := fmt.Sprintf("%s.%s.svc", metricsName, metricsNamespace)
 	selector := "*"
-	if runner.Spec.Selector != nil && *runner.Spec.Selector != "" {
-		selector = *runner.Spec.Selector
+	if runner.Spec.MetricsSelector != nil && *runner.Spec.MetricsSelector != "" {
+		selector = *runner.Spec.MetricsSelector
 	}
 	metricsUrl := fmt.Sprintf("https://%s/apis/custom.metrics.k8s.io/v1beta1/namespaces/%s/Scaledactionrunners/%s/%s", metricsEndpoint, req.Namespace, req.Name, selector)
 

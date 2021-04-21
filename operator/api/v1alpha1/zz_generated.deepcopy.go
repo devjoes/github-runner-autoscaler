@@ -286,8 +286,8 @@ func (in *ScaledActionRunnerSpec) DeepCopyInto(out *ScaledActionRunnerSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.Selector != nil {
-		in, out := &in.Selector, &out.Selector
+	if in.MetricsSelector != nil {
+		in, out := &in.MetricsSelector, &out.MetricsSelector
 		*out = new(string)
 		**out = **in
 	}

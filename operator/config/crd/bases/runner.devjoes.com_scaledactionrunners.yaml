@@ -44,6 +44,8 @@ spec:
                   to remove/update
                 format: int32
                 type: integer
+              metricsSelector:
+                type: string
               minRunners:
                 format: int32
                 type: integer
@@ -56,9 +58,6 @@ spec:
                   annotations:
                     additionalProperties:
                       type: string
-                    description: 'Labels                  map[string]string                          `json:"labels,omitempty"`
-                      //TODO: Fix this - it gets confusing cos some labels are required
-                      by the statefulset'
                     type: object
                   image:
                     type: string
@@ -382,8 +381,6 @@ spec:
                     format: int32
                     type: integer
                 type: object
-              selector:
-                type: string
             required:
             - githubTokenSecret
             - maxRunners

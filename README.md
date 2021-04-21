@@ -364,7 +364,7 @@ spec:
 Again most of the fields are self explanatory except maybe:
 
 - ScaleFactor controls how the number of queued jobs relates to the number of runners. Setting it to 0 makes it scale linearly up to maxRunners any other factor gets passed to [a simplified version of the logistic function](https://www.desmos.com/calculator/o6mpkilyxl) which allows the number of runners to be scaled up eagerly in response to demand.
-- Selector allows you to specify which metrics will be used. For instance if you wanted to target a specific workflow then you could specify "wf_name=main" or if you wanted to scale on workflows which target runners with the runner label "deploy" then you could specify "wf_runs_on_deploy".
+- MetricsSelector allows you to specify which metrics will be used. For instance if you wanted to target a specific workflow then you could specify "wf_name=main" or if you wanted to scale on workflows which target runners with the runner label "deploy" then you could specify "wf_runs_on_deploy".
 - Runner allows you to modify the StatefulSet that is produced, you can specify the image, labels, requests, limits and persistentVolumeClaim
 - Scaling allows you to modify the [ScaledObject](https://keda.sh/docs/1.4/concepts/scaling-deployments/#scaledobject-spec) that is created
 

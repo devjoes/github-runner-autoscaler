@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
-	"github.com/devjoes/github-runner-autoscaler/operator/armgenerator"
+	"github.com/devjoes/github-runner-autoscaler/operator/coregenerator"
 )
 
 // ScaledActionRunnerCoreReconciler reconciles a ScaledActionRunnerCore object
@@ -68,16 +68,16 @@ func (r *ScaledActionRunnerCoreReconciler) Reconcile(ctx context.Context, req ct
 		log.Info("CRD Deleted")
 		return ctrl.Result{}, nil
 	}
-	o, err := armgenerator.GenerateMemcachedResources(metrics)
+	o, err := coregenerator.GenerateMemcachedResources(metrics)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 	objs := []client.Object{}
 	objs = append(objs, o...)
-	o2 := armgenerator.GenerateMetricsApiServer(metrics)
+	o2 := coregenerator.GenerateMetricsApiServer(metrics)
 	objs = append(objs, o2...)
-	objs = append(objs, armgenerator.GeneratePrometheusServiceMonitor(metrics)...)
-	objs = append(objs, armgenerator.GenerateAuthTrigger(metrics)...)
+	objs = append(objs, coregenerator.GeneratePrometheusServiceMonitor(metrics)...)
+	objs = append(objs, coregenerator.GenerateAuthTrigger(metrics)...)
 
 	deploy := func(toDeploy []client.Object, preReqsOnly bool) (bool, error) {
 		c := false
@@ -126,8 +126,8 @@ func (r *ScaledActionRunnerCoreReconciler) CreateUpdateOrReplace(ctx context.Con
 			return false, err
 		}
 	} else {
-		oldKey, foundOld := old.GetAnnotations()[armgenerator.CrdKey]
-		newKey, foundNew := obj.GetAnnotations()[armgenerator.CrdKey]
+		oldKey, foundOld := old.GetAnnotations()[coregenerator.CrdKey]
+		newKey, foundNew := obj.GetAnnotations()[coregenerator.CrdKey]
 
 		if foundNew && foundOld && oldKey == newKey {
 			label := fmt.Sprintf("%s %s/%s", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName())

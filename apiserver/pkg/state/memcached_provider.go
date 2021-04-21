@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/devjoes/github-runner-autoscaler/apiserver/pkg/utils"
-	"github.com/memcachier/mc"
+	"github.com/memcachier/mc/v3"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 

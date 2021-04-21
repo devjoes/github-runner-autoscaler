@@ -46,14 +46,13 @@ type ScaledActionRunnerSpec struct {
 	Repo              string   `json:"repo"`
 	Scaling           *Scaling `json:"scaling,omitempty"`
 	ScaleFactor       *string  `json:"scaleFactor,omitempty"`
-	Selector          *string  `json:"selector,omitempty"` //TODO: rename to MetricsSelector
+	MetricsSelector   *string  `json:"metricsSelector,omitempty"`
 	Runner            *Runner  `json:"runner,omitempty"`
 }
 
 type Runner struct {
-	Image        string `json:"image,omitempty"`
-	RunnerLabels string `json:"runnerLabels,omitempty"`
-	//Labels                  map[string]string                          `json:"labels,omitempty"` //TODO: Fix this - it gets confusing cos some labels are required by the statefulset
+	Image                   string                                     `json:"image,omitempty"`
+	RunnerLabels            string                                     `json:"runnerLabels,omitempty"`
 	Annotations             map[string]string                          `json:"annotations,omitempty"`
 	NodeSelector            map[string]string                          `json:"nodeSelector,omitempty"`
 	WorkVolumeClaimTemplate *corev1.PersistentVolumeClaimSpec          `json:"workVolumeClaimTemplate,omitempty"`
