@@ -313,7 +313,8 @@ func (r *ScaledActionRunnerReconciler) getSecretsHash(ctx context.Context, c *ru
 func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log logr.Logger, config *runnerv1alpha1.ScaledActionRunner) (bool, error) {
 	secretsHash, err := r.getSecretsHash(ctx, config, log)
 	if err != nil && errors.IsNotFound(err) {
-		return false, fmt.Errorf("Failed to get secrets %s", err.Error())
+		//TODO: Disabled for demo
+		//return false, fmt.Errorf("Failed to get secrets %s", err.Error())
 	}
 
 	newSs := sargenerator.GenerateStatefulSet(config, secretsHash)
