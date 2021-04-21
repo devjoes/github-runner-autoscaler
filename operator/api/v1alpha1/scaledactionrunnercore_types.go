@@ -44,6 +44,7 @@ type ScaledActionRunnerCoreSpec struct {
 	MemcachedImage       string        `json:"memcachedImage,omitempty"`
 	SslCertSecret        string        `json:"sslCertSecret"`
 	KedaNamespace        string        `json:"kedaNamespace,omitempty"`
+	MemcachedAuth        bool          `json:"memcachedAuth,omitempty"`
 	MemcacheCredsSecret  string        `json:"memcacheCredsSecret,omitempty"`
 	MemcachedUser        *string       `json:"memcacheUser,omitempty"`
 	MemcacheServers      string        `json:"memcacheServers,omitempty"`
@@ -106,7 +107,7 @@ func (a *ScaledActionRunnerCore) Setup() {
 	if a.Spec.MemcachedImage == "" {
 		a.Spec.MemcachedImage = "docker.io/bitnami/memcached:1.6.9-debian-10-r86"
 	}
-	if a.Spec.MemcachedUser == nil {
+	if a.Spec.MemcachedAuth && a.Spec.MemcachedUser == nil {
 		user := "user"
 		a.Spec.MemcachedUser = &user
 	}

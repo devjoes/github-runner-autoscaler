@@ -78,6 +78,8 @@ spec:
                 type: string
               memcacheUser:
                 type: string
+              memcachedAuth:
+                type: boolean
               memcachedImage:
                 type: string
               memcachedReplicas:

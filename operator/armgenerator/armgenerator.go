@@ -29,9 +29,10 @@ import (
 const CrdKey = "crd_key"
 
 func getLabels(res metav1.Object) map[string]string {
-	ls := res.GetLabels()
-	if ls == nil {
-		ls = map[string]string{}
+	ls := map[string]string{}
+	parentLbls := res.GetLabels()
+	for k, v := range parentLbls {
+		ls[k] = v
 	}
 	ls["product"] = "github_actions_operator"
 	return ls
@@ -63,13 +64,17 @@ func GenerateMemcachedResources(c *runnerv1alpha1.ScaledActionRunnerCore) ([]cli
 	ss.Spec.Template.Name = name
 	ss.Spec.ServiceName = name
 	ss.Namespace = c.Spec.ApiServerNamespace
-	ss.Spec.Template.Spec.Containers[0].Env[0].Value = "user"
-	if c.Spec.MemcachedUser != nil {
-		ss.Spec.Template.Spec.Containers[0].Env[0].Value = *c.Spec.MemcachedUser
-	}
-	ss.Spec.Template.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = name
-	if c.Spec.MemcacheCredsSecret != "" {
-		ss.Spec.Template.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = c.Spec.MemcacheCredsSecret
+	if c.Spec.MemcachedAuth {
+		ss.Spec.Template.Spec.Containers[0].Env[0].Value = "user"
+		if c.Spec.MemcachedUser != nil {
+			ss.Spec.Template.Spec.Containers[0].Env[0].Value = *c.Spec.MemcachedUser
+		}
+		ss.Spec.Template.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = name
+		if c.Spec.MemcacheCredsSecret != "" {
+			ss.Spec.Template.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name = c.Spec.MemcacheCredsSecret
+		}
+	} else {
+		ss.Spec.Template.Spec.Containers[0].Env = []v1.EnvVar{}
 	}
 	ss.Spec.Replicas = &c.Spec.MemcachedReplicas
 	ss.Spec.Template.Spec.Containers[0].Image = c.Spec.MemcachedImage
@@ -96,7 +101,7 @@ func GenerateMemcachedResources(c *runnerv1alpha1.ScaledActionRunnerCore) ([]cli
 	var resources []client.Object
 	resources = append(resources, &ss, &svc)
 
-	if c.Spec.MemcacheCredsSecret == "" {
+	if c.Spec.MemcachedAuth && c.Spec.MemcacheCredsSecret == "" {
 		secret := v1.Secret{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Secret",
@@ -168,7 +173,7 @@ func generateExternalMetricsDeployment(c *runnerv1alpha1.ScaledActionRunnerCore,
 	}
 	if mcServers != "" {
 		args = append(args, fmt.Sprintf("--memcached-servers=%s", mcServers))
-		if c.Spec.MemcachedUser != nil {
+		if c.Spec.MemcachedAuth && c.Spec.MemcachedUser != nil {
 			args = append(args, fmt.Sprintf("--memcached-user=%s", *c.Spec.MemcachedUser))
 		}
 	}
@@ -181,9 +186,10 @@ func generateExternalMetricsDeployment(c *runnerv1alpha1.ScaledActionRunnerCore,
 	}
 
 	dep.Spec.Template.Spec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = fmt.Sprintf("%s-cache", c.Spec.ApiServerName)
-	if c.Spec.MemcacheCredsSecret != "" {
+	if c.Spec.MemcachedAuth && c.Spec.MemcacheCredsSecret != "" {
 		dep.Spec.Template.Spec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = c.Spec.MemcacheCredsSecret
-	} else if !*c.Spec.CreateMemcached {
+	} else if !c.Spec.MemcachedAuth || !*c.Spec.CreateMemcached {
+		// Blank out env vars that ref secret
 		dep.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}
 	}
 	return &dep

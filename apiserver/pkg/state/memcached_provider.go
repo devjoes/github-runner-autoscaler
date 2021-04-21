@@ -26,6 +26,7 @@ func NewMemcachedStateProvider(servers string, username string, argPassword stri
 		password = os.Getenv("MEMCACHED_PASSWORD")
 	}
 	cache := mc.NewMC(servers, username, password)
+
 	key := fmt.Sprintf("test_%s", rand.String(5))
 	// Internally the client picks a server based on the hash of the key
 	// so it is a good test to make the key dynamic
