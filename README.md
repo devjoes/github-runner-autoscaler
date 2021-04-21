@@ -310,6 +310,7 @@ spec:
   memcachedImage:             # Optional. Default: docker.io/bitnami/memcached:1.6.9-debian-10-r86
   sslCertSecret:
   kedaNamespace:              # Optional. Default: keda
+  MemcachedAuth:              # Optional. Default: false - sasl auth can cause issues
   memcacheCredsSecret:        # Optional. Only required if createMemcached==false
   memcachedUser:              # Optional. Only required if createMemcached==false
   memcacheServers:            # Optional. Only required if createMemcached==false
