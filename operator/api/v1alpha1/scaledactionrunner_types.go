@@ -73,7 +73,7 @@ const (
 	DefaultImage          = "joeshearn/action-runner-sideloaded-config:latest"
 )
 
-func Validate(ctx context.Context, sr *ScaledActionRunner, c client.Client) error {
+func Validate(ctx context.Context, sr *ScaledActionRunner, c client.Client, apiServerNs string) error {
 	s := corev1.Secret{}
 	checkSecret := func(ctx context.Context, c client.Client, name string, namespace string) error {
 		if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &s); err != nil {
@@ -81,17 +81,19 @@ func Validate(ctx context.Context, sr *ScaledActionRunner, c client.Client) erro
 		}
 		return nil
 	}
-	//TODO: Check against apiServerExtraArgs:[ --github-pat-namespace=foo]
-	// gtsNs := sr.ObjectMeta.Namespace
-	// if err := checkSecret(ctx, c, sr.ObjectMeta.Namespace, sr.Spec.GithubTokenSecret); err != nil {
-	// 	return err
-	// }
+	if err := checkSecret(ctx, c, sr.Spec.GithubTokenSecret, sr.ObjectMeta.Namespace); err != nil {
+		if err := checkSecret(ctx, c, sr.Spec.GithubTokenSecret, apiServerNs); err != nil {
+			return err
+		}
+	}
 
-	for i := int32(0); i < sr.Spec.MaxRunners; i++ {
-		name := fmt.Sprintf("%s-%d", sr.ObjectMeta.Name, i)
+	for _, name := range sr.Spec.RunnerSecrets {
+		//for i := int32(0); i < sr.Spec.MaxRunners; i++ {
+		//name := fmt.Sprintf("%s-%d", sr.ObjectMeta.Name, i)
 		if err := checkSecret(ctx, c, name, sr.ObjectMeta.Namespace); err != nil {
 			return err
 		}
+		//}
 	}
 	_, err := strconv.ParseFloat(*sr.Spec.ScaleFactor, 64)
 	if err != nil {

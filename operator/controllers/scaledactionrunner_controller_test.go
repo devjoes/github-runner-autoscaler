@@ -158,6 +158,12 @@ func testSarResults(ctx context.Context, test func(*appsv1.StatefulSet, *keda.Sc
 }
 
 func createTestScaledActionRunner(ctx context.Context, k8sClient client.Client) (*runnerv1alpha1.ScaledActionRunner, []corev1.Secret) {
+	k8sClient.Create(ctx, &runnerv1alpha1.ScaledActionRunnerCore{
+		ObjectMeta: v1.ObjectMeta{Name: "core"},
+		Spec: runnerv1alpha1.ScaledActionRunnerCoreSpec{
+			ApiServerNamespace: "baz",
+		},
+	})
 	fooBar := make(map[string]string)
 	fooBar["foo"] = "bar"
 	var pollingInterval int32 = testSarPollingIntervalSecs

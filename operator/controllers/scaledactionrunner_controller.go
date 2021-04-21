@@ -67,8 +67,12 @@ type ScaledActionRunnerReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
 func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("scaledactionrunner", req.NamespacedName)
+	core, err := r.GetScaledActionRunnerCore(ctx, log)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
-	runner, err := r.GetScaledActionRunner(ctx, log, req)
+	runner, err := r.GetScaledActionRunner(ctx, log, req, core.Spec.ApiServerNamespace)
 
 	if err != nil {
 		return ctrl.Result{}, err
@@ -94,12 +98,8 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	if metricsName == "" || metricsNamespace == "" {
-		metrics, err := r.GetScaledActionRunnerCore(ctx, log)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		metricsName = metrics.Spec.ApiServerName
-		metricsNamespace = metrics.Spec.ApiServerNamespace
+		metricsName = core.Spec.ApiServerName
+		metricsNamespace = core.Spec.ApiServerNamespace
 	}
 
 	metricsEndpoint := fmt.Sprintf("%s.%s.svc", metricsName, metricsNamespace)
@@ -109,7 +109,7 @@ func (r *ScaledActionRunnerReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	metricsUrl := fmt.Sprintf("https://%s/apis/custom.metrics.k8s.io/v1beta1/namespaces/%s/Scaledactionrunners/%s/%s", metricsEndpoint, req.Namespace, req.Name, selector)
 
-	setModified, setErr := r.syncStatefulSet(ctx, log, runner)
+	setModified, setErr := r.syncStatefulSet(ctx, log, runner, core.Spec.ApiServerNamespace)
 	scaledObjectModified, objErr := r.syncScaledObject(ctx, log, runner, metricsUrl, metricsName)
 	if setErr != nil {
 		return ctrl.Result{}, setErr
@@ -144,7 +144,7 @@ func (r *ScaledActionRunnerReconciler) deleteDependant(ctx context.Context, log 
 	return err
 }
 
-func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context, log logr.Logger, req ctrl.Request) (*runnerv1alpha1.ScaledActionRunner, error) {
+func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context, log logr.Logger, req ctrl.Request, apiServerNs string) (*runnerv1alpha1.ScaledActionRunner, error) {
 	scaledActionRunner := &runnerv1alpha1.ScaledActionRunner{}
 	err := r.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, scaledActionRunner)
 
@@ -158,7 +158,7 @@ func (r *ScaledActionRunnerReconciler) GetScaledActionRunner(ctx context.Context
 	}
 
 	runnerv1alpha1.Setup(scaledActionRunner, req.Namespace)
-	if err = runnerv1alpha1.Validate(ctx, scaledActionRunner, r.Client); err != nil {
+	if err = runnerv1alpha1.Validate(ctx, scaledActionRunner, r.Client, apiServerNs); err != nil {
 		return nil, err
 	}
 	return scaledActionRunner, nil
@@ -263,18 +263,18 @@ func assignScaledObjectPropsFromRunner(found *keda.ScaledObject, config *runnerv
 	return updated
 }
 
-func (r *ScaledActionRunnerReconciler) getSecretsHash(ctx context.Context, c *runnerv1alpha1.ScaledActionRunner, log logr.Logger) (string, error) {
+func (r *ScaledActionRunnerReconciler) getSecretsHash(ctx context.Context, c *runnerv1alpha1.ScaledActionRunner, apiServerNs string, log logr.Logger) (string, error) {
 	sha := sha256.New()
-	getHash := func(secName string) ([]byte, error) {
+	getHash := func(secName string, ns string) ([]byte, error) {
 		var secret corev1.Secret
 		nsName := types.NamespacedName{
-			Namespace: c.ObjectMeta.Namespace,
+			Namespace: ns,
 			Name:      secName,
 		}
 		if err := r.Get(ctx, nsName, &secret); err != nil {
 			return []byte{}, err
 		}
-		ref := fmt.Sprintf("%s/%s", c.Namespace, c.Name)
+		ref := fmt.Sprintf("%s/%s", ns, c.Name)
 		if secret.Annotations == nil {
 			secret.Annotations = make(map[string]string)
 		}
@@ -290,9 +290,12 @@ func (r *ScaledActionRunnerReconciler) getSecretsHash(ctx context.Context, c *ru
 		return sha.Sum(data), nil
 	}
 
-	secretData, err := getHash(c.Spec.GithubTokenSecret)
+	secretData, err := getHash(c.Spec.GithubTokenSecret, c.ObjectMeta.Namespace)
 	if err != nil {
-		return "", err
+		secretData, err = getHash(c.Spec.GithubTokenSecret, apiServerNs)
+		if err != nil {
+			return "", err
+		}
 	}
 	for i := 0; i < int(c.Spec.MaxRunners); i++ {
 		if i >= len(c.Spec.RunnerSecrets) {
@@ -300,7 +303,7 @@ func (r *ScaledActionRunnerReconciler) getSecretsHash(ctx context.Context, c *ru
 			continue
 		}
 
-		h, err := getHash(c.Spec.RunnerSecrets[i])
+		h, err := getHash(c.Spec.RunnerSecrets[i], c.ObjectMeta.Namespace)
 		if err != nil {
 			log.Error(err, "Secret invalid", "secret", c.Spec.RunnerSecrets[i])
 		} else {
@@ -310,11 +313,10 @@ func (r *ScaledActionRunnerReconciler) getSecretsHash(ctx context.Context, c *ru
 	return base64.StdEncoding.EncodeToString(sha.Sum(secretData)), nil
 }
 
-func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log logr.Logger, config *runnerv1alpha1.ScaledActionRunner) (bool, error) {
-	secretsHash, err := r.getSecretsHash(ctx, config, log)
+func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log logr.Logger, config *runnerv1alpha1.ScaledActionRunner, apiServerNs string) (bool, error) {
+	secretsHash, err := r.getSecretsHash(ctx, config, apiServerNs, log)
 	if err != nil && errors.IsNotFound(err) {
-		//TODO: Disabled for demo
-		//return false, fmt.Errorf("Failed to get secrets %s", err.Error())
+		return false, fmt.Errorf("Failed to get secrets %s", err.Error())
 	}
 
 	newSs := sargenerator.GenerateStatefulSet(config, secretsHash)

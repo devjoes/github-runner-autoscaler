@@ -301,9 +301,7 @@ func GenerateAuthTrigger(c *runnerv1alpha1.ScaledActionRunnerCore) []client.Obje
 		CrdKey: getKey(c),
 	}
 	certName := c.Spec.SslCertSecret
-	if certName == "" {
-		//TODO: make cert in kedanamespace
-	}
+
 	authTrigger := keda.ClusterTriggerAuthentication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        c.Spec.ApiServerName,
