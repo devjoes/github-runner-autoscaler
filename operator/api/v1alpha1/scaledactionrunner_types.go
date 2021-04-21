@@ -89,7 +89,7 @@ func Validate(ctx context.Context, sr *ScaledActionRunner, c client.Client) erro
 
 	for i := int32(0); i < sr.Spec.MaxRunners; i++ {
 		name := fmt.Sprintf("%s-%d", sr.ObjectMeta.Name, i)
-		if err := checkSecret(ctx, c, sr.ObjectMeta.Namespace, name); err != nil {
+		if err := checkSecret(ctx, c, name, sr.ObjectMeta.Namespace); err != nil {
 			return err
 		}
 	}
