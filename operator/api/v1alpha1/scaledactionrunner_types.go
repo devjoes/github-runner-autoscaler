@@ -68,8 +68,8 @@ type Scaling struct {
 }
 
 const (
-	DefaultWorkVolumeSize = "20Gi"
-	DefaultImage          = "joeshearn/action-runner-sideloaded-config:latest"
+	DefaultWorkVolumeSize = "5Gi"
+	DefaultImage          = "myoung34/github-runner:latest"
 )
 
 func Validate(ctx context.Context, sr *ScaledActionRunner, c client.Client, apiServerNs string) error {
@@ -87,12 +87,9 @@ func Validate(ctx context.Context, sr *ScaledActionRunner, c client.Client, apiS
 	}
 
 	for _, name := range sr.Spec.RunnerSecrets {
-		//for i := int32(0); i < sr.Spec.MaxRunners; i++ {
-		//name := fmt.Sprintf("%s-%d", sr.ObjectMeta.Name, i)
 		if err := checkSecret(ctx, c, name, sr.ObjectMeta.Namespace); err != nil {
 			return err
 		}
-		//}
 	}
 	_, err := strconv.ParseFloat(*sr.Spec.ScaleFactor, 64)
 	if err != nil {

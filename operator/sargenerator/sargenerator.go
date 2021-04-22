@@ -78,6 +78,7 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 	as := map[string]string{
 		AnnotationSecretsHash: secretsHash,
 	}
+	const copyConfigCmd = "HOST=$(hostname); cp /actions-creds/$HOST/.runner /actions-creds/$HOST/.credentials /actions-creds/$HOST/.credentials_rsaparams /actions-runner/ -vfL"
 	resource := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        c.ObjectMeta.Name,
@@ -101,6 +102,13 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 						Name:         "runner",
 						Env:          []corev1.EnvVar{},
 						VolumeMounts: []corev1.VolumeMount{},
+						Lifecycle: &corev1.Lifecycle{
+							PostStart: &corev1.Handler{
+								Exec: &corev1.ExecAction{Command: []string{
+									"/bin/bash", "-c", copyConfigCmd,
+								}},
+							},
+						},
 					}},
 				},
 			}, VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

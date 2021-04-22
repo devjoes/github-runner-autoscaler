@@ -350,12 +350,12 @@ spec:
   scaleFactor:                # Optional. Default: "0.8"
   selector:                   # Optional. Default: "*"
   runner:                     # Optional
-    image:                    # Optional. Default: joeshearn/action-runner-sideloaded-config:latest
+    image:                    # Optional. Default: myoung34/github-runner:latest
     runnerLabels:             # Optional. Default: ""
     annotations:              # Optional. Default: []
     nodeSelectors:            # Optional. Default: []
     tolerations:              # Optional. Default: []
-    workVolumeClaimTemplate:  # Optional. Default is a 20Gi volume on default storage.
+    workVolumeClaimTemplate:  # Optional. Default is a 5Gi volume on default storage.
     limits:                   # Optional. Default: {cpu:2,memory:2000Mi}
     requests:                 # Optional. Default: {cpu:200m,memory:200Mi}
 

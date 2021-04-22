@@ -36,6 +36,8 @@ if [[ -n "$RETURN_CONFIG" ]]; then
 	exit 0
 fi
 
+# This isn't used after v0.0.7 - we only use this image for extracting the config.
+# To inject the config we do the same thing in a postStart hook with myoung34/github-runner:latest
 if [[ -d "/actions-creds/$RUNNER_NAME/" ]]; then
 	cp /actions-creds/$RUNNER_NAME/.* /actions-runner/ -a
 fi
