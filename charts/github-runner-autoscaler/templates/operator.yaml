@@ -14,14 +14,14 @@ data:
       resourceName: 35acd4e0.github.com
 kind: ConfigMap
 metadata:
-  name: {{ .Chart.Name }}-config
+  name: {{ template "github-runner-registration.fullname" . }}-config
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
     control-plane: controller-manager
-  name: {{ .Chart.Name }}-metrics-service
+  name: {{ template "github-runner-registration.fullname" . }}-metrics-service
 spec:
   ports:
     - name: https
@@ -35,7 +35,7 @@ kind: Deployment
 metadata:
   labels:
     control-plane: controller-manager
-  name: {{ .Chart.Name }}
+  name: {{ template "github-runner-registration.fullname" . }}
 spec:
   replicas: 1
   selector:

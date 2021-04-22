@@ -1,0 +1,5 @@
+replicaCount: 1
+servicePort: 80
+# This has to track latest because it gets rebuild when myoung34/github-runner:latest changes
+image: joeshearn/github-runner-registration:latest
+imagePullPolicy: IfNotPresent

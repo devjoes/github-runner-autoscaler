@@ -1,0 +1,14 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ template "github-runner-registration.fullname" . }}
+  labels:
+    app: {{ template "github-runner-registration.name" . }}
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: {{ .Values.servicePort }}
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/name: {{ template "github-runner-registration.name" . }}
