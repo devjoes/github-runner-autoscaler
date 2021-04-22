@@ -3,7 +3,10 @@
 FROM mcr.microsoft.com/dotnet/core/aspnet:3.1-buster-slim AS base
 COPY --from=myoung34/github-runner:latest /actions-runner/ /actions-runner/
 WORKDIR /app
-EXPOSE 80
+ENV ASPNETCORE_URLS=http://+:8080
+RUN chown 33 /actions-runner/ -R
+USER 33
+EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
 WORKDIR /src
