@@ -59,6 +59,7 @@ type Runner struct {
 	Limits                  *map[corev1.ResourceName]resource.Quantity `json:"limits,omitempty"`
 	Requests                *map[corev1.ResourceName]resource.Quantity `json:"requests,omitempty"`
 	Tolerations             []corev1.Toleration                        `json:"tolerations,omitempty"`
+	ServiceAccountName      string                                     `json:"serviceAccountName,omitempty"`
 }
 
 type Scaling struct {
@@ -135,6 +136,9 @@ func Setup(sr *ScaledActionRunner, crNamespace string) {
 			},
 			VolumeMode: (*corev1.PersistentVolumeMode)(&filesystmem),
 		}
+	}
+	if spec.Runner.ServiceAccountName == "" {
+		spec.Runner.ServiceAccountName = "default"
 	}
 	if spec.ScaleFactor == nil {
 		sf := "0.8"

@@ -96,7 +96,8 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 					Labels: ls,
 				},
 				Spec: corev1.PodSpec{
-					Volumes: []corev1.Volume{},
+					ServiceAccountName: c.Spec.Runner.ServiceAccountName,
+					Volumes:            []corev1.Volume{},
 					Containers: []corev1.Container{{
 						Image:        c.Spec.Runner.Image,
 						Name:         "runner",
