@@ -133,8 +133,9 @@ func GenerateStatefulSet(c *runnerv1alpha1.ScaledActionRunner, secretsHash strin
 
 func GetVolumes(c *runnerv1alpha1.ScaledActionRunner) ([]corev1.Volume, []corev1.VolumeMount) {
 	emptyString := ""
-	var volumes []corev1.Volume = []corev1.Volume{
-		{
+	var volumes []corev1.Volume = []corev1.Volume{}
+	if *c.Spec.Runner.MountDockerSock {
+		volumes = append(volumes, corev1.Volume{
 			Name: "dockersock",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
@@ -142,17 +143,19 @@ func GetVolumes(c *runnerv1alpha1.ScaledActionRunner) ([]corev1.Volume, []corev1
 					Type: (*corev1.HostPathType)(&emptyString), // Required when comparing with deepeequals
 				},
 			},
-		},
+		})
 	}
 	var volumeMounts []corev1.VolumeMount = []corev1.VolumeMount{
-		{
-			Name:      "dockersock",
-			MountPath: "/var/run/docker.sock",
-		},
 		{
 			Name:      "workdir",
 			MountPath: "/work",
 		},
+	}
+	if *c.Spec.Runner.MountDockerSock {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "dockersock",
+			MountPath: "/var/run/docker.sock",
+		})
 	}
 
 	for i := 0; i < int(c.Spec.MaxRunners); i++ {

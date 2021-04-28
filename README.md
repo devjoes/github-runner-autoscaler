@@ -353,7 +353,9 @@ spec:
     image:                    # Optional. Default: myoung34/github-runner:latest
     runnerLabels:             # Optional. Default: ""
     annotations:              # Optional. Default: []
+    mountDockerSock:          # Optional. Default: true
     nodeSelectors:            # Optional. Default: []
+    serviceAccountName        # Optional. Default: default
     tolerations:              # Optional. Default: []
     workVolumeClaimTemplate:  # Optional. Default is a 5Gi volume on default storage.
     limits:                   # Optional. Default: {cpu:2,memory:2000Mi}

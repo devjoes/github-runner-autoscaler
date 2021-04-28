@@ -60,6 +60,7 @@ type Runner struct {
 	Requests                *map[corev1.ResourceName]resource.Quantity `json:"requests,omitempty"`
 	Tolerations             []corev1.Toleration                        `json:"tolerations,omitempty"`
 	ServiceAccountName      string                                     `json:"serviceAccountName,omitempty"`
+	MountDockerSock         *bool                                      `json:"mountDockerSock,omitempty"`
 }
 
 type Scaling struct {
@@ -139,6 +140,10 @@ func Setup(sr *ScaledActionRunner, crNamespace string) {
 	}
 	if spec.Runner.ServiceAccountName == "" {
 		spec.Runner.ServiceAccountName = "default"
+	}
+	if spec.Runner.MountDockerSock == nil {
+		mds := true
+		spec.Runner.MountDockerSock = &mds
 	}
 	if spec.ScaleFactor == nil {
 		sf := "0.8"
