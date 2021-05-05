@@ -7,7 +7,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace GithubRunnerRegistration
@@ -25,7 +27,21 @@ namespace GithubRunnerRegistration
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.AddSwaggerGen();
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+                {
+                    Title = "Github runner registration service",
+                    Version = "v1",
+                    Description = "Registers runners against a repo and returns the data required to associate each runner with the repo."
+                });
+                var apiXmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlFile = $"{nameof(GithubRunnerRegistration)}.xml";
+
+                c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, apiXmlFile));
+                c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
+
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -49,6 +65,7 @@ namespace GithubRunnerRegistration
             {
                 endpoints.MapControllers();
             });
+            
         }
     }
 }

@@ -20,7 +20,7 @@ namespace GithubRunnerRegistration.Tests
 
 
         [Fact]
-        public async Task ShouldErrorIfRequestLabelsContainsInvalidChars()
+        public void ShouldErrorIfRequestLabelsContainsInvalidChars()
         {
             Assert.Throws<InvalidOperationException>(() => new Register(new RegistrationRequest { AdminPat = Pat, Labels = new string[] { "foo\"" }, Owner = Owner, Repository = Repo }, "a"));
         }
@@ -30,7 +30,7 @@ namespace GithubRunnerRegistration.Tests
         public async Task ShouldErrorIfNameContainsInvalidChars()
         {
             var register = new Register(new RegistrationRequest { AdminPat = Pat, Labels = new string[] { }, Owner = Owner, Repository = Repo }, "a");
-            await Assert.ThrowsAsync<InvalidOperationException>(async () => await register.AddRunner("foo\""));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await register.AddRunner("foo\"", false));
         }
 
         [Fact]
@@ -82,13 +82,13 @@ namespace GithubRunnerRegistration.Tests
             var binary = Path.Combine(tmp, binaryName);
             File.WriteAllText(binary, "this isn't actually executable");
 
-            var request = new RegistrationRequest { AdminPat = Pat, Labels = new string[] {"foo" }, Owner = Owner, Repository = Repo };
+            var request = new RegistrationRequest { AdminPat = Pat, Labels = new string[] { "foo" }, Owner = Owner, Repository = Repo };
             var register = new Register(request, binary);
             register.RunnerRegistrationToken = "RunnerRegistrationToken";
             var secretGenerator = new Mock<IGetCredentials>();
             string credsDir = Path.Combine(Path.GetTempPath(), name);
-            string runnerWd = Path.Combine(credsDir, "runner");            
-            secretGenerator.Setup(g => g.GetCredentialsFromPath(credsDir)).Returns(Task.FromResult(new Dictionary<string, string>{ { "foo", "bar" } })).Verifiable();
+            string runnerWd = Path.Combine(credsDir, "runner");
+            secretGenerator.Setup(g => g.GetCredentialsFromPath(credsDir)).Returns(Task.FromResult(new RunnerRegistrationSecretData { Credentials = "foo" })).Verifiable();
             void mockRun(ProcessStartInfo startInfo)
             {
                 Assert.Equal("dotnet", startInfo.FileName);
@@ -97,10 +97,34 @@ namespace GithubRunnerRegistration.Tests
                 Assert.True(File.Exists(Path.Combine(runnerWd, binaryName)));
                 Assert.Equal($"{binaryName} configure --name \"{name}\" --token {register.RunnerRegistrationToken} --url \"https://github.com/{Owner}/{Repo}\" --labels \"foo\" --replace --unattended", startInfo.Arguments);
             }
-            var creds = await register.RegisterRunner(name, secretGenerator.Object, mockRun);
-            Assert.Equal("bar", creds["foo"]);
+            var creds = await register.RegisterRunner(name, secretGenerator.Object, false, mockRun);
+            Assert.Equal("foo", creds.Credentials);
             Assert.False(Directory.Exists(runnerWd));
             secretGenerator.Verify();
+            Directory.Delete(tmp, true);
+        }
+
+
+        [Fact]
+        public async Task ShouldNotExecuteBinaryOnDryRun()
+        {
+            const string binaryName = "binary";
+            const string name = "foobar";
+            var tmp = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tmp);
+            var binary = Path.Combine(tmp, binaryName);
+            File.WriteAllText(binary, "this isn't actually executable");
+
+            var request = new RegistrationRequest { AdminPat = Pat, Labels = new string[] { "foo" }, Owner = Owner, Repository = Repo };
+            var register = new Register(request, binary);
+            register.RunnerRegistrationToken = "RunnerRegistrationToken";
+            var secretGenerator = new Mock<IGetCredentials>();
+            string credsDir = Path.Combine(Path.GetTempPath(), name);
+            string runnerWd = Path.Combine(credsDir, "runner");
+            var creds = await register.RegisterRunner(name, secretGenerator.Object, true, _=>throw new Exception("boom"));
+            Assert.False(Directory.Exists(runnerWd));
+            secretGenerator.Verify(sg => sg.GetCredentialsFromPath(It.IsAny<string>()), Times.Never);
+            Assert.NotEqual(default, creds.Id);
             Directory.Delete(tmp, true);
         }
 
