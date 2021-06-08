@@ -44,6 +44,13 @@ func (in *Runner) DeepCopyInto(out *Runner) {
 			(*out)[key] = val
 		}
 	}
+	if in.Env != nil {
+		in, out := &in.Env, &out.Env
+		*out = make([]v1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.WorkVolumeClaimTemplate != nil {
 		in, out := &in.WorkVolumeClaimTemplate, &out.WorkVolumeClaimTemplate
 		*out = new(v1.PersistentVolumeClaimSpec)
