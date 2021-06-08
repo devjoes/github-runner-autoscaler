@@ -208,7 +208,7 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 			Value: "true",
 		},
 	}
-	for _, e := range c.Spec.Runner.EnvironmentVariables {
+	for _, e := range c.Spec.Runner.Env {
 		toSet[e.Name] = e
 	}
 	if c.Spec.Runner.RunnerLabels != "" {
