@@ -352,6 +352,7 @@ spec:
   runner:                     # Optional
     image:                    # Optional. Default: myoung34/github-runner:latest
     runnerLabels:             # Optional. Default: ""
+    env:                      # Optional. Default: []
     annotations:              # Optional. Default: []
     mountDockerSock:          # Optional. Default: true
     nodeSelectors:            # Optional. Default: []

@@ -97,7 +97,6 @@ func NewHost(conf config.Config, params ...interface{}) (*Host, error) {
 		name := fmt.Sprintf("%s/%s (%s/%s) @%s", wf.Namespace, wf.Name, wf.Owner, wf.Repository, retrievalTime.String())
 		if err != nil {
 			klog.Errorf("Error whilst getting jobs for %s: %s", name, err.Error())
-			return nil, err
 		}
 		klog.Infof("Initialized %s: %d jobs", name, len(jobs))
 	}

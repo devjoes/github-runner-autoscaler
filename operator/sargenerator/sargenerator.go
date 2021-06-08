@@ -203,6 +203,13 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 			Name:  "RUNNER_WORKDIR",
 			Value: "/work",
 		},
+		"DISABLE_AUTOMATIC_DEREGISTRATION": {
+			Name:  "DISABLE_AUTOMATIC_DEREGISTRATION",
+			Value: "true",
+		},
+	}
+	for _, e := range c.Spec.Runner.EnvironmentVariables {
+		toSet[e.Name] = e
 	}
 	if c.Spec.Runner.RunnerLabels != "" {
 		toSet["LABELS"] = corev1.EnvVar{Name: "LABELS", Value: c.Spec.Runner.RunnerLabels}

@@ -55,6 +55,7 @@ type Runner struct {
 	RunnerLabels            string                                     `json:"runnerLabels,omitempty"`
 	Annotations             map[string]string                          `json:"annotations,omitempty"`
 	NodeSelector            map[string]string                          `json:"nodeSelector,omitempty"`
+	Env                     []corev1.EnvVar                            `json:"env,omitempty"`
 	WorkVolumeClaimTemplate *corev1.PersistentVolumeClaimSpec          `json:"workVolumeClaimTemplate,omitempty"`
 	Limits                  *map[corev1.ResourceName]resource.Quantity `json:"limits,omitempty"`
 	Requests                *map[corev1.ResourceName]resource.Quantity `json:"requests,omitempty"`
