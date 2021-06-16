@@ -148,7 +148,7 @@ func GetVolumes(c *runnerv1alpha1.ScaledActionRunner) ([]corev1.Volume, []corev1
 	var volumeMounts []corev1.VolumeMount = []corev1.VolumeMount{
 		{
 			Name:      "workdir",
-			MountPath: "/work",
+			MountPath: "/actions-runner/_work",
 		},
 	}
 	if *c.Spec.Runner.MountDockerSock {
@@ -201,7 +201,7 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 		},
 		"RUNNER_WORKDIR": {
 			Name:  "RUNNER_WORKDIR",
-			Value: "/work",
+			Value: "/actions-runner/_work",
 		},
 		"DISABLE_AUTOMATIC_DEREGISTRATION": {
 			Name:  "DISABLE_AUTOMATIC_DEREGISTRATION",
