@@ -342,7 +342,10 @@ func GeneratePrometheusServiceMonitor(c *runnerv1alpha1.ScaledActionRunnerCore) 
 	smJson = strings.ReplaceAll(smJson, "sm-ns-name", c.Spec.PrometheusNamespace)
 	smJson = strings.ReplaceAll(smJson, "api-ns-name", c.Spec.ApiServerNamespace)
 	err := json.Unmarshal([]byte(smJson), &sm)
-	fmt.Println(err)
+	if err != nil {
+		fmt.Println(err)
+	}
+	sm.Annotations[CrdKey] = getKey(c)
 	sm.GetObjectKind().SetGroupVersionKind(schema.FromAPIVersionAndKind("monitoring.coreos.com/v1", "ServiceMonitor"))
 	return []client.Object{&sm}
 }
@@ -700,7 +703,8 @@ const JsonServiceMonitor = `{
 	  "labels": {
 		"app": "github-action-apiserver",
 		"release": "prometheus"
-	  }
+	  },
+	  "annotations":{}
 	},
 	"spec": {
 	  "selector": {

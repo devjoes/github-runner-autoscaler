@@ -62,6 +62,7 @@ type Runner struct {
 	Tolerations             []corev1.Toleration                        `json:"tolerations,omitempty"`
 	ServiceAccountName      string                                     `json:"serviceAccountName,omitempty"`
 	MountDockerSock         *bool                                      `json:"mountDockerSock,omitempty"`
+	Patch                   string                                     `json:"patch,omitempty"`
 }
 
 type Scaling struct {
