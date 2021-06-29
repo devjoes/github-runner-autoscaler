@@ -325,6 +325,15 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 	if err != nil && errors.IsNotFound(err) {
 		(resourceLog(log, "Creating a new StatefulSet %s", newSs))
 		ctrl.SetControllerReference(config, newSs, r.Scheme)
+		patchedSs, _, err := sargenerator.PatchStatefulSet(newSs, config)
+
+		if err != nil {
+			log.Error(err, "Failed to patch new StatefulSet "+newSs.GetResourceVersion())
+			return false, err
+		}
+		if patchedSs != nil {
+			newSs = patchedSs
+		}
 		err = r.Create(ctx, newSs)
 		if err != nil {
 			log.Error(err, "Failed to create new StatefulSet "+newSs.Name)
@@ -338,6 +347,25 @@ func (r *ScaledActionRunnerReconciler) syncStatefulSet(ctx context.Context, log 
 	}
 
 	updatedSs := getScaledSetUpdates(existingSs, config, secretsHash)
+	unpatchedSs := existingSs
+	if updatedSs != nil {
+		unpatchedSs = updatedSs
+	}
+
+	patchedSs, patchedHash, err := sargenerator.PatchStatefulSet(unpatchedSs, config)
+	if err != nil {
+		log.Error(err, "Failed to patch StatefulSet "+unpatchedSs.GetResourceVersion())
+		return false, err
+	}
+
+	if existingSs != nil && existingSs.Annotations != nil && patchedHash != "" &&
+		patchedHash == existingSs.Annotations[sargenerator.AnnotationRunnerPatchHash] {
+		// The patched object's has is identical to the one deployed so ignore
+		updatedSs = nil
+	} else if patchedSs != nil {
+		updatedSs = patchedSs
+	}
+
 	if updatedSs != nil {
 		resourceLog(log, "Deleting and recreating StatefulSet %s", updatedSs)
 		changes, err := diff.Diff(existingSs, updatedSs)
@@ -443,7 +471,12 @@ func getScaledSetUpdates(oldSs *appsv1.StatefulSet, config *runnerv1alpha1.Scale
 			updatedSs.Spec.Template.Spec.Tolerations = config.Spec.Runner.Tolerations
 			updated = true
 		}
+		if oldSs.Spec.Template.Spec.ServiceAccountName != config.Spec.Runner.ServiceAccountName {
+			updatedSs.Spec.Template.Spec.ServiceAccountName = config.Spec.Runner.ServiceAccountName
+			updated = true
+		}
 	}
+
 	if updated {
 		return updatedSs
 	}

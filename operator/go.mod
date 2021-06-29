@@ -3,6 +3,7 @@ module github.com/devjoes/github-runner-autoscaler/operator
 go 1.15
 
 require (
+	github.com/evanphx/json-patch v4.9.0+incompatible // indirect
 	github.com/go-logr/logr v0.4.0
 	github.com/kedacore/keda/v2 v2.2.0
 	github.com/onsi/ginkgo v1.15.2

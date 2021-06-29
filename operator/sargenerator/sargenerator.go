@@ -1,10 +1,14 @@
 package sargenerator
 
 import (
+	"crypto/sha1"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"reflect"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
+	jsonpatch "github.com/evanphx/json-patch"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -14,6 +18,7 @@ import (
 
 const AnnotationRunnerRef = "runner-ref"
 const AnnotationSecretsHash = "runner-secrets-hash"
+const AnnotationRunnerPatchHash = "patch-hash"
 
 func getLabels(res metav1.Object) map[string]string {
 	ls := res.GetLabels()
@@ -233,4 +238,39 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 		statefulSet.Spec.Template.Spec.Containers[0].Env = append(statefulSet.Spec.Template.Spec.Containers[0].Env, e)
 	}
 	return modified
+}
+
+func PatchStatefulSet(statefulSet *appsv1.StatefulSet, config *runnerv1alpha1.ScaledActionRunner) (*appsv1.StatefulSet, string, error) {
+	if config.Spec.Runner == nil || config.Spec.Runner.Patch == "" {
+		return nil, "", nil
+	}
+	patch, err := jsonpatch.DecodePatch([]byte(config.Spec.Runner.Patch))
+	if err != nil {
+		return nil, "", err
+	}
+	ssJson, err := json.Marshal(statefulSet.Spec)
+	if err != nil {
+		return nil, "", err
+	}
+	patchedJson, err := patch.Apply(ssJson)
+	if err != nil {
+		return nil, "", err
+	}
+	var patchedSsSpec appsv1.StatefulSetSpec
+	err = json.Unmarshal(patchedJson, &patchedSsSpec)
+	if err != nil {
+		return nil, "", err
+	}
+
+	b := sha1.Sum([]byte(patchedJson))
+	patchedHash := base64.RawStdEncoding.EncodeToString(b[:])
+
+	anns := statefulSet.GetAnnotations()
+	if anns[AnnotationRunnerPatchHash] != patchedHash {
+		newStatefulSet := statefulSet.DeepCopy()
+		newStatefulSet.Annotations[AnnotationRunnerPatchHash] = patchedHash
+		newStatefulSet.Spec = patchedSsSpec
+		return newStatefulSet, patchedHash, nil
+	}
+	return nil, patchedHash, nil
 }

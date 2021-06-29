@@ -288,6 +288,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  patch:
+                    type: string
                   requests:
                     additionalProperties:
                       anyOf:
