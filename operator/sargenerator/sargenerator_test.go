@@ -89,7 +89,32 @@ func TestDoesNotApplyPatchTwice(t *testing.T) {
 	assert.Nil(t, result)
 	assert.Equal(t, hash1, hash2)
 	assert.Nil(t, err)
+}
 
+func TestReplicasDoesNotAffectHash(t *testing.T) {
+	ss := getTestSs()
+
+	_, hash1, err := PatchStatefulSet(ss, &v1alpha1.ScaledActionRunner{
+		Spec: v1alpha1.ScaledActionRunnerSpec{
+			Runner: &v1alpha1.Runner{
+				Patch: `[{"op": "replace", "path": "/serviceName", "value": "replaced"}]`,
+			},
+		},
+	})
+	assert.Nil(t, err)
+
+	ss = getTestSs()
+	moreReplicas := (*ss.Spec.Replicas + 10)
+	ss.Spec.Replicas = &moreReplicas
+	_, hash2, err := PatchStatefulSet(ss, &v1alpha1.ScaledActionRunner{
+		Spec: v1alpha1.ScaledActionRunnerSpec{
+			Runner: &v1alpha1.Runner{
+				Patch: `[{"op": "replace", "path": "/serviceName", "value": "replaced"}]`,
+			},
+		},
+	})
+	assert.Equal(t, hash1, hash2)
+	assert.Nil(t, err)
 }
 
 func TestTriggersDeletionIfPatchChanges(t *testing.T) {

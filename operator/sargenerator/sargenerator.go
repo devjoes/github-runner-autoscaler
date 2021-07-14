@@ -261,9 +261,10 @@ func PatchStatefulSet(statefulSet *appsv1.StatefulSet, config *runnerv1alpha1.Sc
 	if err != nil {
 		return nil, "", err
 	}
-
-	b := sha1.Sum([]byte(patchedJson))
-	patchedHash := base64.RawStdEncoding.EncodeToString(b[:])
+	patchedHash, err := getHash(patchedSsSpec)
+	if err != nil {
+		return nil, "", err
+	}
 
 	anns := statefulSet.GetAnnotations()
 	if anns[AnnotationRunnerPatchHash] != patchedHash {
@@ -273,4 +274,21 @@ func PatchStatefulSet(statefulSet *appsv1.StatefulSet, config *runnerv1alpha1.Sc
 		return newStatefulSet, patchedHash, nil
 	}
 	return nil, patchedHash, nil
+}
+
+func getHash(ssSpec appsv1.StatefulSetSpec) (string, error) {
+	jsonToHash, err := json.Marshal(ssSpec)
+	if err != nil {
+		return "", err
+	}
+	var specToMutate appsv1.StatefulSetSpec
+	json.Unmarshal(jsonToHash, &specToMutate)
+
+	fixedReplicas := int32(1)
+	specToMutate.Replicas = &fixedReplicas
+
+	jsonToHash, _ = json.Marshal(specToMutate)
+
+	hashBytes := sha1.Sum([]byte(jsonToHash))
+	return base64.RawStdEncoding.EncodeToString(hashBytes[:]), nil
 }
