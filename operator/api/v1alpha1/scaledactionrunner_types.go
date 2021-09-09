@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
@@ -38,18 +39,18 @@ type ScaledActionRunnerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of ScaledActionRunner. Edit ScaledActionRunner_types.go to remove/update
-	MaxRunners                int32    `json:"maxRunners"`
-	MinRunners                int32    `json:"minRunners,omitempty"`
-	RunnerSecrets             []string `json:"runnerSecrets"`
-	GithubTokenSecret         string   `json:"githubTokenSecret"`
-	Owner                     string   `json:"owner"`
-	Repo                      string   `json:"repo"`
-	Scaling                   *Scaling `json:"scaling,omitempty"`
-	ScaleFactor               *string  `json:"scaleFactor,omitempty"`
-	MetricsSelector           *string  `json:"metricsSelector,omitempty"`
-	Runner                    *Runner  `json:"runner,omitempty"`
-	ForceScaleUpWindowSecs    *int32   `json:"forceScaleUpWindowSecs,omitempty"`
-	ForceScaleUpFrequencyDays *int32   `json:"forceScaleUpFrequencyDays,omitempty"`
+	MaxRunners            int32            `json:"maxRunners"`
+	MinRunners            int32            `json:"minRunners,omitempty"`
+	RunnerSecrets         []string         `json:"runnerSecrets"`
+	GithubTokenSecret     string           `json:"githubTokenSecret"`
+	Owner                 string           `json:"owner"`
+	Repo                  string           `json:"repo"`
+	Scaling               *Scaling         `json:"scaling,omitempty"`
+	ScaleFactor           *string          `json:"scaleFactor,omitempty"`
+	MetricsSelector       *string          `json:"metricsSelector,omitempty"`
+	Runner                *Runner          `json:"runner,omitempty"`
+	ForceScaleUpWindow    *metav1.Duration `json:"forceScaleUpWindow,omitempty"`
+	ForceScaleUpFrequency *metav1.Duration `json:"forceScaleUpFrequency,omitempty"`
 }
 
 type Runner struct {
@@ -153,15 +154,13 @@ func Setup(sr *ScaledActionRunner, crNamespace string) {
 		sf := "0.8"
 		spec.ScaleFactor = &sf
 	}
-	if spec.ForceScaleUpFrequencyDays == nil {
-		forceScaleUpFrequencyDays := int32(20)
-		spec.ForceScaleUpFrequencyDays = &forceScaleUpFrequencyDays
-	}
-	if spec.ForceScaleUpWindowSecs == nil {
-		forceScaleUpWindowSecs := int32(20 * 60)
-		spec.ForceScaleUpWindowSecs = &forceScaleUpWindowSecs
-	}
 
+	if spec.ForceScaleUpFrequency == nil {
+		spec.ForceScaleUpFrequency = &metav1.Duration{Duration: time.Duration(20*24) * time.Hour}
+	}
+	if spec.ForceScaleUpWindow == nil {
+		spec.ForceScaleUpWindow = &metav1.Duration{Duration: time.Duration(20) * time.Minute}
+	}
 }
 
 // ScaledActionRunnerStatus defines the observed state of ScaledActionRunner

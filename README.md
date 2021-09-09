@@ -349,8 +349,8 @@ spec:
     cooldownPeriod:
   scaleFactor:                # Optional. Default: "0.8"
   selector:                   # Optional. Default: "*"
-  forceScaleUpWindowSecs:     # Optional. Default: 1200 (20 mins)
-  forceScaleUpFrequencyDays:  # Optional. Default: 20
+  forceScaleUpWindow:     # Optional. Default: 20 mins
+  forceScaleUpFrequency:  # Optional. Default: 20 days
   runner:                     # Optional
     image:                    # Optional. Default: myoung34/github-runner:latest
     runnerLabels:             # Optional. Default: ""
@@ -374,8 +374,8 @@ Again most of the fields are self explanatory except maybe:
 - Runner allows you to modify the StatefulSet that is produced, you can specify the image, labels, requests, limits and persistentVolumeClaim
 - Runner.Patch accepts a RFC6092 JSON patch which gets applied to the stateful set **spec**. This is essentially just a way of shoehorning in other changes. Be mindful that the operator is constantly reconciling. So favor replace over add operations (if you add an item to an array then it will add it over and over.)
 - Scaling allows you to modify the [ScaledObject](https://keda.sh/docs/1.4/concepts/scaling-deployments/#scaledobject-spec) that is created
-- ForceScaleUpFrequencyDays is the number of days between forcibly scaling a ScaledActionRunner up to MaxRunners. We have to do this because the Github runner registration tokens eventually expire if not used. A random delay of up to 24 hours is added on to this to prevent every single runner from scaling up at the same time if lots of them are registered at once.
-- ForceScaleUpWindowSecs is how long to scale the runners up for, if your cluster autoscales then this should be enough time for new nodes to be provisioned and for the runners to come online. Setting this to 0 disables the forced scaling up.
+- ForceScaleUpFrequency is the time between forcibly scaling a ScaledActionRunner up to MaxRunners. We have to do this because the Github runner registration tokens eventually expire if not used. A random delay of up to 24 hours is added on to this to prevent every single runner from scaling up at the same time if lots of them are registered at once.
+- ForceScaleUpWindow is how long to scale the runners up for, if your cluster autoscales then this should be enough time for new nodes to be provisioned and for the runners to come online. Setting this to 0 disables the forced scaling up.
 
 ## Rate limits
 
