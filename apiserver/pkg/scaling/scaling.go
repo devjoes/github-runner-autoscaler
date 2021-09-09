@@ -11,32 +11,32 @@ import (
 )
 
 type Scaling struct {
-	MinWorkers                int32   `json:"minWorkers"`
-	MaxWorkers                int32   `json:"maxWorkers"`
-	ScaleFactor               float64 `json:"scaleFactor"`
-	Linear                    bool    `json:"linear"`
-	ForceScaleUpWindowSecs    int32   `json:"forceScaleUpWindowSecs"`
-	ForceScaleUpFrequencyDays int32   `json:"forceScaleUpFrequencyDays"`
+	MinWorkers            int32         `json:"minWorkers"`
+	MaxWorkers            int32         `json:"maxWorkers"`
+	ScaleFactor           float64       `json:"scaleFactor"`
+	Linear                bool          `json:"linear"`
+	ForceScaleUpWindow    time.Duration `json:"forceScaleUpWindow"`
+	ForceScaleUpFrequency time.Duration `json:"forceScaleUpFrequency"`
 }
 
 func NewScaling(crd *runnerv1alpha1.ScaledActionRunner) Scaling {
 	sf, _ := strconv.ParseFloat(*crd.Spec.ScaleFactor, 64)
 
-	forceScaleUpWindowSecs := int32(20 * 60)
-	forceScaleUpFrequencyDays := int32(20)
-	if crd.Spec.Scaling != nil && crd.Spec.ForceScaleUpWindowSecs != nil {
-		forceScaleUpWindowSecs = *crd.Spec.ForceScaleUpWindowSecs
+	forceScaleUpWindow := time.Duration(20) * time.Minute
+	forceScaleUpFrequency := time.Duration(20*24) * time.Hour
+	if crd.Spec.ForceScaleUpWindow != nil {
+		forceScaleUpWindow = crd.Spec.ForceScaleUpWindow.Duration
 	}
-	if crd.Spec.Scaling != nil && crd.Spec.ForceScaleUpFrequencyDays != nil {
-		forceScaleUpFrequencyDays = *crd.Spec.ForceScaleUpFrequencyDays
+	if crd.Spec.ForceScaleUpFrequency != nil {
+		forceScaleUpFrequency = crd.Spec.ForceScaleUpFrequency.Duration
 	}
 	return Scaling{
-		MinWorkers:                crd.Spec.MinRunners,
-		MaxWorkers:                crd.Spec.MaxRunners,
-		ForceScaleUpWindowSecs:    forceScaleUpWindowSecs,
-		ForceScaleUpFrequencyDays: forceScaleUpFrequencyDays,
-		ScaleFactor:               sf,
-		Linear:                    sf == 0,
+		MinWorkers:            crd.Spec.MinRunners,
+		MaxWorkers:            crd.Spec.MaxRunners,
+		ForceScaleUpWindow:    forceScaleUpWindow,
+		ForceScaleUpFrequency: forceScaleUpFrequency,
+		ScaleFactor:           sf,
+		Linear:                sf == 0,
 	}
 }
 
@@ -76,7 +76,7 @@ func (s *Scaling) GetOutput(queueLength int32) int32 {
 }
 
 func (s *Scaling) CalculateForcedScale(nextForcedScale *time.Time) (bool, time.Time) {
-	if s.ForceScaleUpWindowSecs == 0 {
+	if s.ForceScaleUpWindow == 0 {
 		return false, *nextForcedScale
 	}
 	rndSecs := rand.Intn(60 * 60 * 24)
@@ -85,10 +85,10 @@ func (s *Scaling) CalculateForcedScale(nextForcedScale *time.Time) (bool, time.T
 		return false, time.Now().UTC().Add(time.Second * time.Duration(rndSecs))
 	}
 
-	endOfForcedScaleWindow := nextForcedScale.Add(time.Duration(s.ForceScaleUpWindowSecs) * time.Second)
+	endOfForcedScaleWindow := nextForcedScale.Add(s.ForceScaleUpWindow)
 	if endOfForcedScaleWindow.Before(time.Now().UTC()) {
 		// If the forced scale window has ended then set a new one
-		return false, time.Now().UTC().Add(time.Second * (time.Duration(s.ForceScaleUpFrequencyDays*24*60*60) + time.Duration(rndSecs)))
+		return false, time.Now().UTC().Add(s.ForceScaleUpFrequency + time.Duration(rndSecs))
 	} else if nextForcedScale.Before(time.Now().UTC()) {
 		// If we are in the forced scale window then scale up
 		return true, *nextForcedScale

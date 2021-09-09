@@ -70,8 +70,8 @@ func TestLogistic(t *testing.T) {
 
 func TestCalculateForcedScale_ShouldReturnNextForceScale_IfNil(t *testing.T) {
 	s := Scaling{
-		ForceScaleUpWindowSecs:    20 * 60,
-		ForceScaleUpFrequencyDays: 20,
+		ForceScaleUpWindow:    time.Duration(20) * time.Minute,
+		ForceScaleUpFrequency: time.Duration(20*24) * time.Hour,
 	}
 	scaleNow, nextForcedScale := s.CalculateForcedScale(nil)
 	assert.False(t, scaleNow)
@@ -82,20 +82,20 @@ func TestCalculateForcedScale_ShouldReturnNextForceScale_IfNil(t *testing.T) {
 
 func TestCalculateForcedScale_ShouldReturnNextForceScale_IfBeforeScaleWindow(t *testing.T) {
 	s := Scaling{
-		ForceScaleUpWindowSecs:    20 * 60,
-		ForceScaleUpFrequencyDays: 20,
+		ForceScaleUpWindow:    time.Duration(20) * time.Minute,
+		ForceScaleUpFrequency: time.Duration(20*24) * time.Hour,
 	}
 	yesterday := time.Now().UTC().Add(time.Hour * time.Duration(-24))
 	scaleNow, nextForcedScale := s.CalculateForcedScale(&yesterday)
 	assert.False(t, scaleNow)
 	assert.NotNil(t, nextForcedScale)
-	assert.True(t, nextForcedScale.After(time.Now().UTC().Add(time.Hour*time.Duration(24*s.ForceScaleUpFrequencyDays))))
+	assert.True(t, nextForcedScale.After(time.Now().UTC().Add(s.ForceScaleUpFrequency)))
 }
 
 func TestCalculateForcedScale_ShouldReturnTrueScaleNow_IfInScalingWindow(t *testing.T) {
 	s := Scaling{
-		ForceScaleUpWindowSecs:    20 * 60,
-		ForceScaleUpFrequencyDays: 20,
+		ForceScaleUpWindow:    time.Duration(20) * time.Minute,
+		ForceScaleUpFrequency: time.Duration(20*24) * time.Hour,
 	}
 	fiveMinsAgo := time.Now().UTC().Add(time.Minute * time.Duration(-5))
 	scaleNow, nextForcedScale := s.CalculateForcedScale(&fiveMinsAgo)
@@ -105,8 +105,8 @@ func TestCalculateForcedScale_ShouldReturnTrueScaleNow_IfInScalingWindow(t *test
 
 func TestCalculateForcedScale_ShouldDoNothing_IfScalingWindowIsInFuture(t *testing.T) {
 	s := Scaling{
-		ForceScaleUpWindowSecs:    20 * 60,
-		ForceScaleUpFrequencyDays: 20,
+		ForceScaleUpWindow:    time.Duration(20) * time.Minute,
+		ForceScaleUpFrequency: time.Duration(20*24) * time.Hour,
 	}
 	hourInFuture := time.Now().UTC().Add(time.Hour)
 	scaleNow, nextForcedScale := s.CalculateForcedScale(&hourInFuture)
@@ -116,8 +116,8 @@ func TestCalculateForcedScale_ShouldDoNothing_IfScalingWindowIsInFuture(t *testi
 
 func TestCalculateForcedScale_ShouldDoNothing_IfScalingIsDisabled(t *testing.T) {
 	s := Scaling{
-		ForceScaleUpWindowSecs:    0,
-		ForceScaleUpFrequencyDays: 20,
+		ForceScaleUpWindow:    time.Duration(0),
+		ForceScaleUpFrequency: time.Duration(20*24) * time.Hour,
 	}
 	now := time.Now().UTC()
 	scaleNow, nextForcedScale := s.CalculateForcedScale(&now)

@@ -22,8 +22,9 @@ package v1alpha1
 
 import (
 	"k8s.io/api/autoscaling/v2beta2"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -46,22 +47,22 @@ func (in *Runner) DeepCopyInto(out *Runner) {
 	}
 	if in.Env != nil {
 		in, out := &in.Env, &out.Env
-		*out = make([]v1.EnvVar, len(*in))
+		*out = make([]corev1.EnvVar, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.WorkVolumeClaimTemplate != nil {
 		in, out := &in.WorkVolumeClaimTemplate, &out.WorkVolumeClaimTemplate
-		*out = new(v1.PersistentVolumeClaimSpec)
+		*out = new(corev1.PersistentVolumeClaimSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Limits != nil {
 		in, out := &in.Limits, &out.Limits
-		*out = new(map[v1.ResourceName]resource.Quantity)
+		*out = new(map[corev1.ResourceName]resource.Quantity)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make(map[v1.ResourceName]resource.Quantity, len(*in))
+			*out = make(map[corev1.ResourceName]resource.Quantity, len(*in))
 			for key, val := range *in {
 				(*out)[key] = val.DeepCopy()
 			}
@@ -69,10 +70,10 @@ func (in *Runner) DeepCopyInto(out *Runner) {
 	}
 	if in.Requests != nil {
 		in, out := &in.Requests, &out.Requests
-		*out = new(map[v1.ResourceName]resource.Quantity)
+		*out = new(map[corev1.ResourceName]resource.Quantity)
 		if **in != nil {
 			in, out := *in, *out
-			*out = make(map[v1.ResourceName]resource.Quantity, len(*in))
+			*out = make(map[corev1.ResourceName]resource.Quantity, len(*in))
 			for key, val := range *in {
 				(*out)[key] = val.DeepCopy()
 			}
@@ -80,7 +81,7 @@ func (in *Runner) DeepCopyInto(out *Runner) {
 	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
-		*out = make([]v1.Toleration, len(*in))
+		*out = make([]corev1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -308,14 +309,14 @@ func (in *ScaledActionRunnerSpec) DeepCopyInto(out *ScaledActionRunnerSpec) {
 		*out = new(Runner)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.ForceScaleUpWindowSecs != nil {
-		in, out := &in.ForceScaleUpWindowSecs, &out.ForceScaleUpWindowSecs
-		*out = new(int32)
+	if in.ForceScaleUpWindow != nil {
+		in, out := &in.ForceScaleUpWindow, &out.ForceScaleUpWindow
+		*out = new(v1.Duration)
 		**out = **in
 	}
-	if in.ForceScaleUpFrequencyDays != nil {
-		in, out := &in.ForceScaleUpFrequencyDays, &out.ForceScaleUpFrequencyDays
-		*out = new(int32)
+	if in.ForceScaleUpFrequency != nil {
+		in, out := &in.ForceScaleUpFrequency, &out.ForceScaleUpFrequency
+		*out = new(v1.Duration)
 		**out = **in
 	}
 }
