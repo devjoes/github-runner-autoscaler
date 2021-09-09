@@ -22,8 +22,9 @@ func NewClientState(name string) *ClientState {
 }
 
 type ClientState struct {
-	Name        string
-	LastValue   []*github.WorkflowRun
-	LastRequest time.Time
-	Status      Status
+	Name            string
+	LastValue       []*github.WorkflowRun
+	LastRequest     time.Time
+	Status          Status
+	NextForcedScale *time.Time
 }

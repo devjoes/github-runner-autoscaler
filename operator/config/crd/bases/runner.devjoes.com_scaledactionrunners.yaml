@@ -37,6 +37,12 @@ spec:
           spec:
             description: ScaledActionRunnerSpec defines the desired state of ScaledActionRunner
             properties:
+              forceScaleUpFrequencyDays:
+                format: int32
+                type: integer
+              forceScaleUpWindowSecs:
+                format: int32
+                type: integer
               githubTokenSecret:
                 type: string
               maxRunners:

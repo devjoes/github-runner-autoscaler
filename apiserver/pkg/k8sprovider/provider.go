@@ -60,7 +60,7 @@ func (p *workflowQueueProvider) valueFor(info provider.CustomMetricInfo, name ty
 			klog.Warningf("Invalid selector '%s' in %s. %s", info.Metric, name.String(), err.Error())
 		}
 	}
-	total, retrievalTime, lbls, wf, err := p.orchestrator.QueryMetric(name.Name, metricSelector)
+	total, retrievalTime, lbls, wf, forceScale, err := p.orchestrator.QueryMetric(name.Name, metricSelector)
 	if err != nil && err.Error() == host.MetricErrNotFound {
 		return resource.Quantity{}, time.Time{}, nil, nil, provider.NewMetricNotFoundForError(info.GroupResource, info.Metric, name.Name)
 	}
@@ -73,6 +73,10 @@ func (p *workflowQueueProvider) valueFor(info provider.CustomMetricInfo, name ty
 
 	promLabels = append([]string{name.String(), metricSelector.String()}, promLabels...)
 	scaledTotal := int(wf.Scaling.GetOutput(int32(total)))
+	if forceScale {
+		scaledTotal = int(wf.Scaling.MaxWorkers)
+	}
+
 	//TODO: Get the labels out of QueryMetric, maybe move all this instrumentation stuff in to one place
 
 	guageFilteredQueueLength.WithLabelValues(promLabels...).Set(float64(total))

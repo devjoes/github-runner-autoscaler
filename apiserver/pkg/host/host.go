@@ -32,26 +32,37 @@ func (h *Host) GetAllMetricNames(namespace string) ([]string, error) {
 
 const MetricErrNotFound string = "metric not found"
 
-func (h *Host) QueryMetric(key string, selector labels.Selector) (int, *time.Time, map[string][]string, *config.GithubWorkflowConfig, error) {
+//TODO: Wrap all of these returned vars up in ot a struct
+func (h *Host) QueryMetric(key string, selector labels.Selector) (int, *time.Time, map[string][]string, *config.GithubWorkflowConfig, bool, error) {
 	wf, err := h.config.GetWorkflow(key)
 	if err != nil {
-		return 0, nil, nil, nil, err
+		return 0, nil, nil, nil, false, err
 	}
 	if wf == nil {
-		return 0, nil, nil, nil, errors.New(MetricErrNotFound)
+		return 0, nil, nil, nil, false, errors.New(MetricErrNotFound)
 	}
 	client := h.getClient(wf)
 	ctx := context.Background()
 	jobs, retrievalTime, err := client.GetQueuedJobs(ctx)
 	if err != nil {
-		return 0, nil, nil, wf, err
+		return 0, nil, nil, wf, false, err
 	}
 	wfInfo, err := client.GetWorkflowInfo(ctx)
 	if err != nil {
-		return 0, nil, nil, wf, err
+		return 0, nil, nil, wf, false, err
+	}
+	clientState, err := client.GetState()
+	if err != nil {
+		return 0, nil, nil, wf, false, err
+	}
+	forceScaleNow, nextForceScale := wf.Scaling.CalculateForcedScale(clientState.NextForcedScale)
+	if nextForceScale != *clientState.NextForcedScale {
+		clientState.NextForcedScale = &nextForceScale
+		client.SaveState(clientState)
 	}
 	filteredJobs, matchedLabels := labeling.FilterBySelector(jobs, wf, wfInfo, selector)
-	return len(filteredJobs), retrievalTime, matchedLabels, wf, err
+
+	return len(filteredJobs), retrievalTime, matchedLabels, wf, forceScaleNow, err
 }
 
 func (h *Host) getClient(wf *config.GithubWorkflowConfig) client.Client {
