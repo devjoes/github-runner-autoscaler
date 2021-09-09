@@ -8,6 +8,7 @@ on:
       - "master"
     tags:
       - "*"
+  workflow_dispatch:
 defaults:
   run:
     working-directory: ./apiserver
