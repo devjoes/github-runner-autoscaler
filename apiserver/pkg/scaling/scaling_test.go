@@ -2,6 +2,7 @@ package scaling
 
 import (
 	"testing"
+	"time"
 
 	runnerv1alpha1 "github.com/devjoes/github-runner-autoscaler/operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
@@ -65,4 +66,61 @@ func TestLogistic(t *testing.T) {
 	testRangeAgainstOutputs(t, 10, 1, []int{1, 2, 4, 7, 8, 9, 10})
 	testRangeAgainstOutputs(t, 100, 0.5, []int{1, 2, 3, 4, 7, 11, 17, 25, 35, 47, 60, 71, 80, 87, 92, 95, 97, 98, 99, 99, 100})
 	testRangeAgainstOutputs(t, 100, 1, []int{1, 3, 7, 17, 35, 60, 80, 92, 97, 99, 100})
+}
+
+func TestCalculateForcedScale_ShouldReturnNextForceScale_IfNil(t *testing.T) {
+	s := Scaling{
+		ForceScaleUpWindowSecs:    20 * 60,
+		ForceScaleUpFrequencyDays: 20,
+	}
+	scaleNow, nextForcedScale := s.CalculateForcedScale(nil)
+	assert.False(t, scaleNow)
+	assert.NotNil(t, nextForcedScale)
+	assert.True(t, nextForcedScale.After(time.Now().UTC()))
+	assert.True(t, nextForcedScale.Before(time.Now().UTC().Add(time.Hour*time.Duration(24))))
+}
+
+func TestCalculateForcedScale_ShouldReturnNextForceScale_IfBeforeScaleWindow(t *testing.T) {
+	s := Scaling{
+		ForceScaleUpWindowSecs:    20 * 60,
+		ForceScaleUpFrequencyDays: 20,
+	}
+	yesterday := time.Now().UTC().Add(time.Hour * time.Duration(-24))
+	scaleNow, nextForcedScale := s.CalculateForcedScale(&yesterday)
+	assert.False(t, scaleNow)
+	assert.NotNil(t, nextForcedScale)
+	assert.True(t, nextForcedScale.After(time.Now().UTC().Add(time.Hour*time.Duration(24*s.ForceScaleUpFrequencyDays))))
+}
+
+func TestCalculateForcedScale_ShouldReturnTrueScaleNow_IfInScalingWindow(t *testing.T) {
+	s := Scaling{
+		ForceScaleUpWindowSecs:    20 * 60,
+		ForceScaleUpFrequencyDays: 20,
+	}
+	fiveMinsAgo := time.Now().UTC().Add(time.Minute * time.Duration(-5))
+	scaleNow, nextForcedScale := s.CalculateForcedScale(&fiveMinsAgo)
+	assert.True(t, scaleNow)
+	assert.Equal(t, fiveMinsAgo, nextForcedScale)
+}
+
+func TestCalculateForcedScale_ShouldDoNothing_IfScalingWindowIsInFuture(t *testing.T) {
+	s := Scaling{
+		ForceScaleUpWindowSecs:    20 * 60,
+		ForceScaleUpFrequencyDays: 20,
+	}
+	hourInFuture := time.Now().UTC().Add(time.Hour)
+	scaleNow, nextForcedScale := s.CalculateForcedScale(&hourInFuture)
+	assert.False(t, scaleNow)
+	assert.Equal(t, hourInFuture, nextForcedScale)
+}
+
+func TestCalculateForcedScale_ShouldDoNothing_IfScalingIsDisabled(t *testing.T) {
+	s := Scaling{
+		ForceScaleUpWindowSecs:    0,
+		ForceScaleUpFrequencyDays: 20,
+	}
+	now := time.Now().UTC()
+	scaleNow, nextForcedScale := s.CalculateForcedScale(&now)
+	assert.False(t, scaleNow)
+	assert.Equal(t, now, nextForcedScale)
 }

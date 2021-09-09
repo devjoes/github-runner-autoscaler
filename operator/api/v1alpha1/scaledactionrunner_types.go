@@ -38,16 +38,18 @@ type ScaledActionRunnerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of ScaledActionRunner. Edit ScaledActionRunner_types.go to remove/update
-	MaxRunners        int32    `json:"maxRunners"`
-	MinRunners        int32    `json:"minRunners,omitempty"`
-	RunnerSecrets     []string `json:"runnerSecrets"`
-	GithubTokenSecret string   `json:"githubTokenSecret"`
-	Owner             string   `json:"owner"`
-	Repo              string   `json:"repo"`
-	Scaling           *Scaling `json:"scaling,omitempty"`
-	ScaleFactor       *string  `json:"scaleFactor,omitempty"`
-	MetricsSelector   *string  `json:"metricsSelector,omitempty"`
-	Runner            *Runner  `json:"runner,omitempty"`
+	MaxRunners                int32    `json:"maxRunners"`
+	MinRunners                int32    `json:"minRunners,omitempty"`
+	RunnerSecrets             []string `json:"runnerSecrets"`
+	GithubTokenSecret         string   `json:"githubTokenSecret"`
+	Owner                     string   `json:"owner"`
+	Repo                      string   `json:"repo"`
+	Scaling                   *Scaling `json:"scaling,omitempty"`
+	ScaleFactor               *string  `json:"scaleFactor,omitempty"`
+	MetricsSelector           *string  `json:"metricsSelector,omitempty"`
+	Runner                    *Runner  `json:"runner,omitempty"`
+	ForceScaleUpWindowSecs    *int32   `json:"forceScaleUpWindowSecs,omitempty"`
+	ForceScaleUpFrequencyDays *int32   `json:"forceScaleUpFrequencyDays,omitempty"`
 }
 
 type Runner struct {
@@ -150,6 +152,14 @@ func Setup(sr *ScaledActionRunner, crNamespace string) {
 	if spec.ScaleFactor == nil {
 		sf := "0.8"
 		spec.ScaleFactor = &sf
+	}
+	if spec.ForceScaleUpFrequencyDays == nil {
+		forceScaleUpFrequencyDays := int32(20)
+		spec.ForceScaleUpFrequencyDays = &forceScaleUpFrequencyDays
+	}
+	if spec.ForceScaleUpWindowSecs == nil {
+		forceScaleUpWindowSecs := int32(20 * 60)
+		spec.ForceScaleUpWindowSecs = &forceScaleUpWindowSecs
 	}
 
 }
