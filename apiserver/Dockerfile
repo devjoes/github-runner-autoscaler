@@ -11,7 +11,7 @@ COPY go.sum go.sum
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
 RUN go mod download
-RUN go get github.com/devjoes/github-runner-autoscaler/operator@add-forced-scale-up
+RUN go get github.com/devjoes/github-runner-autoscaler/operator
 
 # Copy the go source
 COPY main.go main.go
