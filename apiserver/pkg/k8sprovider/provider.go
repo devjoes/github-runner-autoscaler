@@ -74,7 +74,7 @@ func (p *workflowQueueProvider) valueFor(info provider.CustomMetricInfo, name ty
 	promLabels = append([]string{name.String(), metricSelector.String()}, promLabels...)
 
 	if forceScale {
-		promLabels = append(promLabels, "forciblyScaledUp")
+		promLabels[0] = "ForciblyScaledUp_" + promLabels[0]
 		scaledTotal = int(wf.Scaling.MaxWorkers)
 	}
 
