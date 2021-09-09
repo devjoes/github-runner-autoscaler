@@ -8,6 +8,7 @@ on:
       - "master"
     tags:
       - "*"
+  workflow_dispatch:
 defaults:
   run:
     working-directory: ./operator
@@ -17,7 +18,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: RyanSiu1995/kubebuilder-action@v1.1
+      - uses: RyanSiu1995/kubebuilder-action@v1.2.1
       - name: Generate docker tags
         env:
           IMAGENAME: joeshearn/github-runner-autoscaler-operator
@@ -34,13 +35,13 @@ jobs:
 
       - run: make && make test
       - name: Login
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: docker/login-action@v1.8.0
         with:
           username: joeshearn
           password: ${{ secrets.dockerhub_pass }}
       - name: Build and push Docker image
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: docker/build-push-action@v2.3.0
         with:
           context: ./operator
