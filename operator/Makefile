@@ -71,7 +71,7 @@ installyaml: manifests kustomize
 	$(KUSTOMIZE) build config/crd > ../install.yaml
 	cd config/manager && $(KUSTOMIZE) edit set image controller=joeshearn/github-runner-autoscaler-operator:latest
 	echo '---' >> ../install.yaml
-	$(KUSTOMIZE) build config/default >> ../install.yaml
+	
 
 # Uninstall CRDs from a cluster
 uninstall: manifests kustomize

@@ -2,8 +2,21 @@ apiVersion: v1
 entries:
   github-runner-autoscaler:
   - apiVersion: v2
+    appVersion: v0.1.8
+    created: "2021-09-13T15:15:40.1063177+01:00"
+    description: Operator for github-runner-autoscaler
+    digest: e02186bfeb8e1dd3df9e0c19c9454f62edc78267c9fa0f8982cc81dbd94a7460
+    home: https://github.com/devjoes/github-runner-autoscaler
+    name: github-runner-autoscaler
+    sources:
+    - https://github.com/devjoes/github-runner-autoscaler
+    type: application
+    urls:
+    - https://devjoes.github.io/github-runner-autoscaler/charts/github-runner-autoscaler-0.1.8.tgz
+    version: 0.1.8
+  - apiVersion: v2
     appVersion: v0.1.7
-    created: "2021-07-14T10:44:11.6332164+01:00"
+    created: "2021-09-13T15:15:40.1059773+01:00"
     description: Operator for github-runner-autoscaler
     digest: 49e6ffc576e159cf72246e6bf1c1558c2561138bdc7a4220e804a6d0fdf62ef5
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -16,7 +29,7 @@ entries:
     version: 0.1.7
   - apiVersion: v2
     appVersion: v0.1.6
-    created: "2021-07-14T10:44:11.6324601+01:00"
+    created: "2021-09-13T15:15:40.1053841+01:00"
     description: Operator for github-runner-autoscaler
     digest: a37cc58054f4f0e0c8a697d94966bc49a27183c53b9528e5bd313babbb02d707
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -29,7 +42,7 @@ entries:
     version: 0.1.6
   - apiVersion: v2
     appVersion: v0.1.5
-    created: "2021-07-14T10:44:11.6321552+01:00"
+    created: "2021-09-13T15:15:40.1046897+01:00"
     description: Operator for github-runner-autoscaler
     digest: 4d5a174f1635655bd4b83cd8dfb91e4bbbf184ecd2e62daa42c2b90b39c27414
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -42,7 +55,7 @@ entries:
     version: 0.1.5
   - apiVersion: v2
     appVersion: v0.1.3
-    created: "2021-07-14T10:44:11.6318369+01:00"
+    created: "2021-09-13T15:15:40.1039034+01:00"
     description: Operator for github-runner-autoscaler
     digest: 9e9b4fc34be976977903ea66286f92b69271c9c650050d26df9ddbc5eb4cf568
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -55,7 +68,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: v0.1.1
-    created: "2021-07-14T10:44:11.6315469+01:00"
+    created: "2021-09-13T15:15:40.1032376+01:00"
     description: Operator for github-runner-autoscaler
     digest: c46fb32b68e3f67ec4a19b2b3bb8aec392080a6bc9c2770ab378a714c305df0a
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -68,7 +81,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: v0.1.0
-    created: "2021-07-14T10:44:11.6312724+01:00"
+    created: "2021-09-13T15:15:40.1025086+01:00"
     description: Operator for github-runner-autoscaler
     digest: 7efabe1140afd0c6b43b510d105dd85ab15f59c7551aca3047e5c024b8bd55bb
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -81,7 +94,7 @@ entries:
     version: 0.1.1
   - apiVersion: v2
     appVersion: v0.1.0
-    created: "2021-07-14T10:44:11.6308974+01:00"
+    created: "2021-09-13T15:15:40.1016677+01:00"
     description: Operator for github-runner-autoscaler
     digest: 58d8ca52b599fe8089c07c29428a784ee8a7857ba55a630f954dab15cec3eca3
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -94,7 +107,7 @@ entries:
     version: 0.1.0
   - apiVersion: v2
     appVersion: v0.0.1
-    created: "2021-07-14T10:44:11.6306325+01:00"
+    created: "2021-09-13T15:15:40.1004278+01:00"
     description: Operator for github-runner-autoscaler
     digest: c538e602565cb0f219af404095360f06ad00021d3349f6533b70ca500f482162
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -107,7 +120,7 @@ entries:
     version: 0.0.7
   - apiVersion: v2
     appVersion: v0.0.1
-    created: "2021-07-14T10:44:11.630387+01:00"
+    created: "2021-09-13T15:15:40.0957193+01:00"
     description: Operator for github-runner-autoscaler
     digest: ed06f0a1d99ce9701fc4ad6141367ae02c8f4e3ccafb8704e6ff74b39af37476
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -120,7 +133,7 @@ entries:
     version: 0.0.6
   - apiVersion: v2
     appVersion: v0.0.1
-    created: "2021-07-14T10:44:11.6301424+01:00"
+    created: "2021-09-13T15:15:40.094847+01:00"
     description: Operator for github-runner-autoscaler
     digest: 87a82032cb33a00c8c82371bc4f38c3e36214e04c4d293001e3337f7523dc86e
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -133,7 +146,7 @@ entries:
     version: 0.0.5
   - apiVersion: v2
     appVersion: v0.0.1
-    created: "2021-07-14T10:44:11.6298613+01:00"
+    created: "2021-09-13T15:15:40.0941915+01:00"
     description: Operator for github-runner-autoscaler
     digest: 72ffc9839628c3e01cbcff3e6ffb9c0fb6fbf8188ffa69304190b9c998e9ecc0
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -146,7 +159,7 @@ entries:
     version: 0.0.4
   - apiVersion: v2
     appVersion: v0.0.1
-    created: "2021-07-14T10:44:11.6295179+01:00"
+    created: "2021-09-13T15:15:40.093527+01:00"
     description: Operator for github-runner-autoscaler
     digest: e3348b73715c646a3b15b0c2a3d9e91f2bfe8c359f12e5bdc68ac865bb64dd35
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -159,7 +172,7 @@ entries:
     version: 0.0.3
   - apiVersion: v2
     appVersion: v0.0.1
-    created: "2021-07-14T10:44:11.628912+01:00"
+    created: "2021-09-13T15:15:40.0911344+01:00"
     description: Operator for github-runner-autoscaler
     digest: c88a9b945fc8151d4b0043e4461295282024956d07acf6fbac11bb2962bf420a
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -172,7 +185,7 @@ entries:
     version: 0.0.2
   - apiVersion: v2
     appVersion: v0.0.1
-    created: "2021-07-14T10:44:11.6279037+01:00"
+    created: "2021-09-13T15:15:40.0905537+01:00"
     description: Operator for github-runner-autoscaler
     digest: 40b27d246e96d90903a229b85d8048e9c2d6518269fc64566645200786daff3d
     home: https://github.com/devjoes/github-runner-autoscaler
@@ -186,7 +199,7 @@ entries:
   github-runner-registration:
   - apiVersion: v2
     appVersion: v0.1.0
-    created: "2021-07-14T10:44:11.6333967+01:00"
+    created: "2021-09-13T15:15:40.1067006+01:00"
     description: Operator for github-runner-registration
     digest: b4a41ea5d28c0935f87af932b934932b884b216bf6224e6b0f75174a9adacc63
     home: https://github.com/devjoes/github-runner-autoscaler/
@@ -197,4 +210,4 @@ entries:
     urls:
     - https://devjoes.github.io/github-runner-autoscaler/charts/github-runner-registration-0.1.1.tgz
     version: 0.1.1
-generated: "2021-07-14T10:44:11.6270311+01:00"
+generated: "2021-09-13T15:15:40.0897956+01:00"
