@@ -56,6 +56,7 @@ func (h *Host) QueryMetric(key string, selector labels.Selector) (int, *time.Tim
 		return 0, nil, nil, wf, false, err
 	}
 	forceScaleNow, nextForceScale := wf.Scaling.CalculateForcedScale(clientState.NextForcedScale)
+	klog.V(10).Infof("CalculateForcedScale: ForceScaleUpWindow:%s ForceScaleUpFrequency:%s forceScaleNow: %v nextForceScale: %s", wf.Scaling.ForceScaleUpWindow.String(), wf.Scaling.ForceScaleUpFrequency.String(), forceScaleNow, nextForceScale.String())
 	if clientState.NextForcedScale == nil || nextForceScale != *clientState.NextForcedScale {
 		clientState.NextForcedScale = &nextForceScale
 		client.SaveState(clientState)
