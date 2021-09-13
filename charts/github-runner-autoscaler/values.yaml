@@ -1,4 +1,4 @@
 replicaCount: 1
 
-image: joeshearn/github-runner-autoscaler-operator:v0.1.7
+image: joeshearn/github-runner-autoscaler-operator:v0.1.8
 imagePullPolicy: IfNotPresent
