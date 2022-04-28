@@ -212,6 +212,10 @@ func SetEnvVars(c *runnerv1alpha1.ScaledActionRunner, statefulSet *appsv1.Statef
 			Name:  "DISABLE_AUTOMATIC_DEREGISTRATION",
 			Value: "true",
 		},
+		"DISABLE_RUNNER_UPDATE": {
+			Name:  "DISABLE_RUNNER_UPDATE",
+			Value: "true",
+		},
 	}
 	for _, e := range c.Spec.Runner.Env {
 		toSet[e.Name] = e
