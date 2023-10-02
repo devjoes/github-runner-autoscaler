@@ -1,5 +1,8 @@
 # github-action-autoscaler
 
+## Archived
+A lot of this functionality is now [built in to KEDA itself](https://keda.sh/docs/2.12/scalers/github-runner/)
+
 ## Purpose
 
 This operator allows you to create github action runners which scale up and down in response to demand. There are a few other projects which allow you to do the same thing, however this is geared towards running platforms that support thousands of individual Github repositories with their own discrete sets of permissions, cost codes etc. The main problems that this was created to solve are:
